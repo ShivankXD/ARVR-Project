@@ -2,102 +2,63 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Aetheria — Crystal Temple VR World | Meta Quest 3</title>
-  <meta name="description" content="Aetheria: A cyberpunk crystal temple VR world for Meta Quest 3 built with A-Frame.">
+  <title>Aetheria VR — Immersive Open World | Meta Quest 3</title>
+  <meta name="description" content="Aetheria: An immersive open VR world with procedural atmosphere, crystal spires and floating sanctuaries for Meta Quest 3.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <script src="https://unpkg.com/aframe-environment-component@1.3.4/dist/aframe-environment-component.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
 
   <style>
-    body { margin: 0; overflow: hidden; background: #000; font-family: 'Inter', system-ui, sans-serif; }
+    body { margin: 0; overflow: hidden; background: #000; }
 
+    /* Tiny minimal HUD — bottom center, doesn't obstruct world */
     #hud {
       position: fixed;
-      bottom: 28px;
+      bottom: 22px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 999;
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 10px 20px;
-      background: rgba(6, 8, 20, 0.82);
-      backdrop-filter: blur(14px);
-      border: 1px solid rgba(99, 102, 241, 0.35);
+      gap: 12px;
+      padding: 8px 22px;
+      background: rgba(4, 6, 18, 0.78);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(129, 140, 248, 0.25);
       border-radius: 40px;
-      box-shadow: 0 0 30px rgba(99, 102, 241, 0.25), inset 0 1px 0 rgba(255,255,255,0.07);
       pointer-events: none;
+      font-family: system-ui, sans-serif;
     }
-
-    .hud-key {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 0.75rem;
-      color: #94a3b8;
-      font-weight: 500;
-    }
-
-    .hud-key kbd {
+    .hk { font-size: 0.72rem; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
+    .hk kbd {
       background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 5px;
-      padding: 2px 7px;
-      font-size: 0.7rem;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.68rem;
       color: #e2e8f0;
       font-family: monospace;
     }
-
-    .hud-divider { width: 1px; height: 16px; background: rgba(255,255,255,0.12); }
-
-    #world-title {
-      position: fixed;
-      top: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 999;
-      text-align: center;
-      pointer-events: none;
-    }
-
-    #world-title h1 {
-      font-size: 1.05rem;
-      font-weight: 800;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      background: linear-gradient(to right, #818cf8, #f472b6, #38bdf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin: 0 0 3px;
-    }
-
-    #world-title p {
-      font-size: 0.72rem;
-      color: rgba(148, 163, 184, 0.8);
-      margin: 0;
-      letter-spacing: 0.06em;
-    }
+    .hdiv { width: 1px; height: 14px; background: rgba(255,255,255,0.1); }
 
     .a-enter-vr-button {
       background: linear-gradient(135deg, #6366f1, #ec4899) !important;
       border-radius: 12px !important;
       border: none !important;
-      box-shadow: 0 0 25px rgba(99, 102, 241, 0.6) !important;
-      transition: all 0.3s ease !important;
+      box-shadow: 0 0 20px rgba(99,102,241,0.5) !important;
+      transition: all 0.3s !important;
     }
-    .a-enter-vr-button:hover {
-      transform: scale(1.08) !important;
-      filter: brightness(1.15) !important;
-    }
+    .a-enter-vr-button:hover { transform: scale(1.06) !important; }
   </style>
 
   <script>
-    // Web Audio Synth
+    // ── Audio Synthesizer ────────────────────────────────────────
     const SFX = {
       ctx: null,
       init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
-      tone(freq, type = 'sine', dur = 0.5, vol = 0.18) {
+      play(freq, type = 'sine', dur = 0.5, vol = 0.15) {
         try {
           this.init();
           const o = this.ctx.createOscillator(), g = this.ctx.createGain();
@@ -108,81 +69,89 @@
           o.start(); o.stop(this.ctx.currentTime + dur);
         } catch(e) {}
       },
-      chime() { [523, 659, 784, 1047].forEach((f,i) => setTimeout(()=>this.tone(f,'sine',0.4,0.15),i*70)); },
-      portal() { this.tone(200,'sawtooth',0.4,0.15); setTimeout(()=>this.tone(400,'sine',0.3,0.12),200); },
-      orb() { this.tone(1200,'triangle',0.25,0.1); }
+      chime()  { [523,659,784,1047].forEach((f,i) => setTimeout(()=>this.play(f,'sine',0.5,0.12), i*80)); },
+      portal() { this.play(220,'sawtooth',0.3,0.12); setTimeout(()=>this.play(440,'sine',0.4,0.1),250); },
+      ping()   { this.play(1200,'triangle',0.2,0.08); }
     };
 
-    // Crystal Color Cycle
-    AFRAME.registerComponent('crystal-color', {
+    // ── Hover Glow ───────────────────────────────────────────────
+    AFRAME.registerComponent('hover-glow', {
       init() {
-        const hues = ['#6366f1','#ec4899','#06b6d4','#10b981','#f59e0b','#a855f7','#ef4444'];
-        const names = ['Indigo Storm','Neon Magenta','Cyan Plasma','Emerald Aura','Solar Amber','Arcane Violet','Crimson Blaze'];
+        const el = this.el;
+        const os = {...(el.getAttribute('scale')||{x:1,y:1,z:1})};
+        el.addEventListener('mouseenter', () => {
+          el.setAttribute('animation__hg', `property:scale; to:${os.x*1.08} ${os.y*1.08} ${os.z*1.08}; dur:200; easing:easeOutQuad`);
+          SFX.ping();
+        });
+        el.addEventListener('mouseleave', () => {
+          el.setAttribute('animation__hg', `property:scale; to:${os.x} ${os.y} ${os.z}; dur:250; easing:easeOutQuad`);
+        });
+      }
+    });
+
+    // ── Crystal Color Cycler ─────────────────────────────────────
+    AFRAME.registerComponent('crystal-cycle', {
+      init() {
+        const palette = [
+          {c:'#6366f1', name:'Indigo Storm'},
+          {c:'#ec4899', name:'Neon Magenta'},
+          {c:'#06b6d4', name:'Cyan Plasma'},
+          {c:'#10b981', name:'Emerald Flux'},
+          {c:'#f59e0b', name:'Solar Amber'},
+          {c:'#a855f7', name:'Void Violet'},
+          {c:'#ef4444', name:'Crimson Blaze'}
+        ];
         let i = 0;
         this.el.addEventListener('click', () => {
-          i = (i+1) % hues.length;
-          const h = hues[i];
-          this.el.querySelectorAll('[data-crystal]').forEach(m => {
-            m.setAttribute('material', `color: ${h}; emissive: ${h}; emissiveIntensity: 0.8; roughness: 0.05; metalness: 0.9; wireframe: false`);
+          i = (i+1) % palette.length;
+          const col = palette[i].c;
+          this.el.querySelectorAll('[data-c]').forEach(m => {
+            m.setAttribute('material', `color:${col}; emissive:${col}; emissiveIntensity:0.85; roughness:0.05; metalness:0.95`);
           });
-          this.el.querySelectorAll('[data-clight]').forEach(l => l.setAttribute('color', h));
-          const lbl = document.querySelector('#crystal-name');
-          if (lbl) lbl.setAttribute('value', names[i]);
+          this.el.querySelectorAll('[data-cl]').forEach(l => l.setAttribute('color', col));
+          const lbl = document.querySelector('#c-label');
+          if(lbl) lbl.setAttribute('value', palette[i].name);
           SFX.chime();
         });
       }
     });
 
-    // Portal Realm Switcher
-    AFRAME.registerComponent('realm-portal', {
+    // ── Portal Realm Switcher ────────────────────────────────────
+    AFRAME.registerComponent('portal-switch', {
       init() {
         const realms = [
-          { sky1: '#0a0a2e', sky2: '#1a0a3e', name: 'Nebula Void', fog: '#060012' },
-          { sky1: '#0d1117', sky2: '#0d2818', name: 'Emerald Nebula', fog: '#001a08' },
-          { sky1: '#1a0a00', sky2: '#3d1200', name: 'Solar Forge', fog: '#1a0500' },
-          { sky1: '#001a2e', sky2: '#002e4a', name: 'Deep Ocean', fog: '#000d17' },
-          { sky1: '#1a001a', sky2: '#2e0033', name: 'Void Rift', fog: '#0d000d' }
+          {preset:'starry',  ground:'walkernoise', name:'Nebula Rift',   dress:'towers', damt:15, dcol:'#1e1b4b'},
+          {preset:'forest',  ground:'squares',     name:'Mystic Wilds',  dress:'trees',  damt:25, dcol:'#064e3b'},
+          {preset:'neon',    ground:'spikes',      name:'Neon City',     dress:'towers', damt:20, dcol:'#312e81'},
+          {preset:'dream',   ground:'hills',       name:'Dream Realm',   dress:'cubes',  damt:20, dcol:'#6b21a8'},
+          {preset:'volcano', ground:'canyon',      name:'Ashen Forge',   dress:'towers', damt:12, dcol:'#7f1d1d'}
         ];
         let i = 0;
         this.el.addEventListener('click', () => {
           i = (i+1) % realms.length;
           const r = realms[i];
-          const sky = document.querySelector('#main-sky');
-          if (sky) {
-            sky.setAttribute('material', `color: ${r.sky2}; shader: flat`);
-          }
-          const atm = document.querySelector('#atm-gradient');
-          if (atm) atm.setAttribute('material', `color: ${r.sky1}; shader: flat; opacity: 0.95; transparent: true`);
-          const lbl = document.querySelector('#portal-realm-name');
-          if (lbl) lbl.setAttribute('value', r.name);
+          const env = document.querySelector('#env');
+          env.setAttribute('environment',
+            `preset:${r.preset}; ground:${r.ground}; groundTexture:${r.ground}; ` +
+            `dressing:${r.dress}; dressingAmount:${r.damt}; dressingColor:${r.dcol}; ` +
+            `shadow:true; fog:0.8; skyType:atmosphere;`
+          );
+          const lbl = document.querySelector('#p-label');
+          if(lbl) lbl.setAttribute('value', r.name);
           SFX.portal();
         });
       }
     });
 
-    // Energy Orb Interaction
-    AFRAME.registerComponent('energy-orb', {
+    // ── Robot Dance Cycler ───────────────────────────────────────
+    AFRAME.registerComponent('robot-dance', {
       init() {
-        let scale = 1;
+        const clips = ['Dance','Jump','Walk','Idle'];
+        let i = 0;
         this.el.addEventListener('click', () => {
-          scale = scale === 1 ? 1.5 : 1;
-          this.el.setAttribute('animation__pulse', `property: scale; to: ${scale*1.2} ${scale*1.2} ${scale*1.2}; dir: alternate; loop: true; dur: 600; easing: easeInOutSine`);
-          SFX.orb();
-        });
-      }
-    });
-
-    // Hover Glow
-    AFRAME.registerComponent('hover-glow', {
-      init() {
-        const el = this.el;
-        const orig = el.getAttribute('scale') || {x:1,y:1,z:1};
-        el.addEventListener('mouseenter', () => {
-          el.setAttribute('animation__hg', `property: scale; to: ${orig.x*1.08} ${orig.y*1.08} ${orig.z*1.08}; dur: 180; easing: easeOutQuad`);
-          SFX.tone(880,'sine',0.15,0.08);
-        });
-        el.addEventListener('mouseleave', () => {
-          el.setAttribute('animation__hg', `property: scale; to: ${orig.x} ${orig.y} ${orig.z}; dur: 220; easing: easeOutQuad`);
+          i = (i+1) % clips.length;
+          this.el.setAttribute('animation-mixer', `clip:${clips[i]}; loop:repeat;`);
+          SFX.ping();
         });
       }
     });
@@ -190,457 +159,409 @@
 </head>
 <body>
 
-  <!-- Minimal bottom HUD -->
   <div id="hud">
-    <span class="hud-key"><kbd>WASD</kbd> Move</span>
-    <div class="hud-divider"></div>
-    <span class="hud-key"><kbd>Mouse</kbd> Look</span>
-    <div class="hud-divider"></div>
-    <span class="hud-key"><kbd>Click</kbd> Interact</span>
-    <div class="hud-divider"></div>
-    <span class="hud-key" style="color:#818cf8">● A-Frame 1.7.1 · Meta Quest 3 Ready</span>
-  </div>
-
-  <!-- World Title -->
-  <div id="world-title">
-    <h1>Aetheria</h1>
-    <p>Crystal Temple VR World · Meta Quest 3</p>
+    <span class="hk"><kbd>WASD</kbd> Move</span>
+    <span class="hdiv"></span>
+    <span class="hk"><kbd>Mouse</kbd> Look</span>
+    <span class="hdiv"></span>
+    <span class="hk"><kbd>Click</kbd> Interact</span>
+    <span class="hdiv"></span>
+    <span class="hk" style="color:#818cf8; font-size:0.7rem;">✦ Meta Quest 3 · WebXR</span>
   </div>
 
   <a-scene
-    fog="type: exponential; color: #060012; density: 0.018"
-    renderer="antialias: true; colorManagement: true; exposure: 1.0; highRefreshRate: true; physicallyCorrectLights: true;"
-    cursor="rayOrigin: mouse"
-    raycaster="objects: .clickable">
+    fog="type:exponential; color:#0b0614; density:0.022"
+    renderer="antialias:true; colorManagement:true; exposure:1.1; highRefreshRate:true; physicallyCorrectLights:true;"
+    cursor="rayOrigin:mouse"
+    raycaster="objects:.clickable">
 
-    <!-- =========== ASSETS =========== -->
+    <!-- ══ ASSETS ══════════════════════════════════════════════ -->
     <a-assets>
-      <a-asset-item id="robot-model" src="https://modelviewer.dev/shared-assets/models/robot.glb" response-type="arraybuffer"></a-asset-item>
-      <a-asset-item id="astronaut-model" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" response-type="arraybuffer"></a-asset-item>
+      <a-asset-item id="robot"    src="https://modelviewer.dev/shared-assets/models/robot.glb"      response-type="arraybuffer"></a-asset-item>
+      <a-asset-item id="astro"   src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"   response-type="arraybuffer"></a-asset-item>
+      <a-asset-item id="helmet"  src="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DamagedHelmet/glTF-Binary/DamagedHelmet.glb" response-type="arraybuffer"></a-asset-item>
     </a-assets>
 
-    <!-- =========== SKY & ATMOSPHERE =========== -->
-    <!-- Gradient Sky (two layered spheres) -->
-    <a-sphere id="main-sky" radius="300" material="color: #1a0a3e; shader: flat; side: back"></a-sphere>
-    <a-sphere id="atm-gradient" radius="280" material="color: #0a0a2e; shader: flat; side: back; opacity: 0.95; transparent: true"></a-sphere>
-
-    <!-- Stars (small glowing spheres scattered high up) -->
-    <a-entity id="stars">
-      <!-- Star cluster 1 -->
-      <a-sphere position="40 80 -200" radius="0.4" material="color:#fff; emissive:#fff; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="-80 100 -180" radius="0.3" material="color:#c7d2fe; emissive:#c7d2fe; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="120 90 -160" radius="0.5" material="color:#fbcfe8; emissive:#fbcfe8; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="-150 120 -220" radius="0.4" material="color:#bae6fd; emissive:#bae6fd; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="60 110 -250" radius="0.6" material="color:#fff; emissive:#fff; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="-30 140 -200" radius="0.3" material="color:#ddd6fe; emissive:#ddd6fe; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="200 85 -190" radius="0.4" material="color:#fff; emissive:#fff; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="-100 95 -240" radius="0.35" material="color:#c7d2fe; emissive:#c7d2fe; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="180 130 -210" radius="0.5" material="color:#fbcfe8; emissive:#fbcfe8; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="-200 110 -170" radius="0.4" material="color:#bae6fd; emissive:#bae6fd; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="90 160 -230" radius="0.3" material="color:#fff; emissive:#fff; emissiveIntensity:1; shader:flat"></a-sphere>
-      <a-sphere position="-60 75 -190" radius="0.45" material="color:#c7d2fe; emissive:#c7d2fe; emissiveIntensity:1; shader:flat"></a-sphere>
+    <!-- ══ PROCEDURAL ENVIRONMENT ════════════════════════════════
+         This creates the beautiful dark/purple ground with cyan grid lines,
+         atmospheric sky, and distant procedural dressing towers.
+    ═════════════════════════════════════════════════════════════ -->
+    <a-entity id="env"
+      environment="preset:starry; ground:walkernoise; groundColor:#0b0614; groundColor2:#110a2e;
+                   dressing:towers; dressingAmount:18; dressingColor:#1e1b4b; dressingVariance:5 4 5;
+                   shadow:true; fog:0.85; skyType:atmosphere; lightPosition:0.5 1 -0.5;
+                   gridColor:#6366f1;">
     </a-entity>
 
-    <!-- Distant nebula rings (far background art) -->
-    <a-torus position="0 30 -250" radius="90" radius-tubular="8" rotation="75 0 30"
-      material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.15; opacity:0.25; transparent:true; shader:flat; side:double">
+    <!-- ══ GLOBAL LIGHTS ════════════════════════════════════════ -->
+    <a-light type="ambient"     color="#1a1040" intensity="0.9"></a-light>
+    <a-light type="directional" color="#c7d2fe" intensity="0.35" position="-5 15 5" cast-shadow="true"></a-light>
+
+    <!-- ══ BACKGROUND DISTANT CITYSCAPE SILHOUETTE ══════════════
+         Row of dark tower shapes far in the distance — adds
+         incredible depth/horizon line feeling.
+    ═════════════════════════════════════════════════════════════ -->
+    <a-entity position="0 0 -70">
+      <!-- Central mega spire -->
+      <a-box position="0 18 0"   width="3"  height="36" depth="3"  material="color:#0f0c26; emissive:#4f46e5; emissiveIntensity:0.12; roughness:1"></a-box>
+      <a-box position="0 37 0"   width="1"  height="4"  depth="1"  material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.8; shader:flat"></a-box>
+
+      <!-- Left towers -->
+      <a-box position="-12 12 0" width="2.5" height="24" depth="2.5" material="color:#0c0a22; emissive:#312e81; emissiveIntensity:0.1; roughness:1"></a-box>
+      <a-box position="-12 25 0" width="0.8" height="2" depth="0.8" material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.7; shader:flat"></a-box>
+      <a-box position="-22 8 2"  width="2"  height="16" depth="2"  material="color:#0a0820; emissive:#1e1b4b; emissiveIntensity:0.15; roughness:1"></a-box>
+      <a-box position="-22 17 2" width="0.6" height="2" depth="0.6" material="color:#ec4899; emissive:#ec4899; emissiveIntensity:0.6; shader:flat"></a-box>
+      <a-box position="-33 5 -2" width="1.5" height="10" depth="1.5" material="color:#080618; emissive:#1e1b4b; emissiveIntensity:0.1; roughness:1"></a-box>
+
+      <!-- Right towers -->
+      <a-box position="12 10 0"  width="2.5" height="20" depth="2.5" material="color:#0c0a22; emissive:#312e81; emissiveIntensity:0.1; roughness:1"></a-box>
+      <a-box position="12 21 0"  width="0.8" height="2"  depth="0.8" material="color:#06b6d4; emissive:#06b6d4; emissiveIntensity:0.7; shader:flat"></a-box>
+      <a-box position="22 14 2"  width="2"  height="28" depth="2"  material="color:#0a0820; emissive:#1e1b4b; emissiveIntensity:0.12; roughness:1"></a-box>
+      <a-box position="22 29 2"  width="0.6" height="2"  depth="0.6" material="color:#a855f7; emissive:#a855f7; emissiveIntensity:0.7; shader:flat"></a-box>
+      <a-box position="35 6 -2"  width="1.5" height="12" depth="1.5" material="color:#080618; emissive:#1e1b4b; emissiveIntensity:0.1; roughness:1"></a-box>
+
+      <!-- Window glow strips (horizontal lines of emissive material) -->
+      <a-box position="-12 8 1.4"  width="2.4" height="0.12" depth="0.05" material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.4; shader:flat"></a-box>
+      <a-box position="-12 14 1.4" width="2.4" height="0.12" depth="0.05" material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.4; shader:flat"></a-box>
+      <a-box position="12 7 1.4"   width="2.4" height="0.12" depth="0.05" material="color:#06b6d4; emissive:#06b6d4; emissiveIntensity:0.4; shader:flat"></a-box>
+      <a-box position="12 12 1.4"  width="2.4" height="0.12" depth="0.05" material="color:#06b6d4; emissive:#06b6d4; emissiveIntensity:0.4; shader:flat"></a-box>
+      <a-box position="22 10 3.4"  width="1.9" height="0.1"  depth="0.05" material="color:#a855f7; emissive:#a855f7; emissiveIntensity:0.4; shader:flat"></a-box>
+    </a-entity>
+
+    <!-- ══ GIANT ATMOSPHERIC RINGS IN SKY ═══════════════════════ -->
+    <a-torus position="0 35 -80"  radius="55" radius-tubular="1.2" rotation="78 10 0"
+      material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.18; opacity:0.35; transparent:true; side:double; shader:flat">
     </a-torus>
-    <a-torus position="60 20 -240" radius="70" radius-tubular="6" rotation="60 20 0"
-      material="color:#ec4899; emissive:#ec4899; emissiveIntensity:0.12; opacity:0.2; transparent:true; shader:flat; side:double">
+    <a-torus position="15 28 -90" radius="45" radius-tubular="0.8" rotation="65 -15 0"
+      material="color:#ec4899; emissive:#ec4899; emissiveIntensity:0.15; opacity:0.28; transparent:true; side:double; shader:flat">
     </a-torus>
 
-    <!-- =========== GROUND PLANE =========== -->
-    <!-- Base ground -->
-    <a-plane
-      position="0 0 0" rotation="-90 0 0" width="300" height="300"
-      material="color:#07040f; roughness:0.9; metalness:0.1">
+    <!-- ══ AMBIENT FLOATING PARTICLE FIELD ══════════════════════
+         30 small glowing spheres drifting through the air to create
+         a magical living atmosphere.
+    ═════════════════════════════════════════════════════════════ -->
+    <!-- Cluster A — near crystal spire -->
+    <a-sphere position="-2 3 -7"   radius="0.05" material="color:#818cf8; emissive:#818cf8; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:-2 2.8 -7; to:-2 4.2 -7; dir:alternate; loop:true; dur:3100; easing:easeInOutSine"></a-sphere>
+    <a-sphere position="1.5 4 -9"  radius="0.04" material="color:#c7d2fe; emissive:#c7d2fe; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:1.5 3.5 -9; to:1.5 5 -9; dir:alternate; loop:true; dur:2700; easing:easeInOutSine"></a-sphere>
+    <a-sphere position="-1 5 -11"  radius="0.06" material="color:#6366f1; emissive:#6366f1; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:-1 4.5 -11; to:-1 6 -11; dir:alternate; loop:true; dur:3500; easing:easeInOutSine"></a-sphere>
+    <a-sphere position="2 6 -8"    radius="0.04" material="color:#a5b4fc; emissive:#a5b4fc; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:2 5.5 -8; to:2 7 -8; dir:alternate; loop:true; dur:2400; easing:easeInOutSine"></a-sphere>
+    <a-sphere position="-3 2.5 -6" radius="0.05" material="color:#818cf8; emissive:#818cf8; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:-3 2.2 -6; to:-3 3.5 -6; dir:alternate; loop:true; dur:3800; easing:easeInOutSine"></a-sphere>
+
+    <!-- Cluster B — near portal -->
+    <a-sphere position="-7 3 -7"   radius="0.05" material="color:#38bdf8; emissive:#38bdf8; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:-7 2.5 -7; to:-7 4 -7; dir:alternate; loop:true; dur:2900; easing:easeInOutSine"></a-sphere>
+    <a-sphere position="-8.5 4.5 -9" radius="0.04" material="color:#06b6d4; emissive:#06b6d4; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:-8.5 4 -9; to:-8.5 5.5 -9; dir:alternate; loop:true; dur:3200; easing:easeInOutSine"></a-sphere>
+    <a-sphere position="-6 5 -10"  radius="0.06" material="color:#7dd3fc; emissive:#7dd3fc; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:-6 4.5 -10; to:-6 6 -10; dir:alternate; loop:true; dur:2600; easing:easeInOutSine"></a-sphere>
+
+    <!-- Cluster C — near shrine/astronaut -->
+    <a-sphere position="7 3.5 -8"  radius="0.05" material="color:#f472b6; emissive:#f472b6; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:7 3 -8; to:7 4.5 -8; dir:alternate; loop:true; dur:3400; easing:easeInOutSine"></a-sphere>
+    <a-sphere position="8.5 5 -7"  radius="0.04" material="color:#ec4899; emissive:#ec4899; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:8.5 4.5 -7; to:8.5 5.8 -7; dir:alternate; loop:true; dur:2800; easing:easeInOutSine"></a-sphere>
+    <a-sphere position="6 6 -10"   radius="0.06" material="color:#fda4af; emissive:#fda4af; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:6 5.5 -10; to:6 7 -10; dir:alternate; loop:true; dur:3100; easing:easeInOutSine"></a-sphere>
+
+    <!-- Wandering particles (wider spread, higher up) -->
+    <a-sphere position="3 8 -15"   radius="0.07" material="color:#a855f7; emissive:#a855f7; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:3 7 -15; to:3 10 -15; dir:alternate; loop:true; dur:4200; easing:easeInOutSine"></a-sphere>
+    <a-sphere position="-4 9 -18"  radius="0.05" material="color:#818cf8; emissive:#818cf8; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:-4 8 -18; to:-4 10.5 -18; dir:alternate; loop:true; dur:5000; easing:easeInOutSine"></a-sphere>
+    <a-sphere position="0 10 -20"  radius="0.08" material="color:#c7d2fe; emissive:#c7d2fe; emissiveIntensity:1; shader:flat"
+      animation="property:position; from:0 9 -20; to:0 12 -20; dir:alternate; loop:true; dur:4600; easing:easeInOutSine"></a-sphere>
+
+    <!-- ══ GLOWING PATH / WALKWAY ════════════════════════════════
+         Subtle glowing runway connecting the player to the crystal
+    ═════════════════════════════════════════════════════════════ -->
+    <a-plane position="0 0.02 -5" rotation="-90 0 0" width="1.4" height="14"
+      material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.18; opacity:0.5; transparent:true; shader:flat">
+    </a-plane>
+    <!-- Path edge lines -->
+    <a-plane position="-0.75 0.02 -5" rotation="-90 0 0" width="0.06" height="14"
+      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.7; shader:flat; opacity:0.8; transparent:true">
+    </a-plane>
+    <a-plane position="0.75 0.02 -5" rotation="-90 0 0" width="0.06" height="14"
+      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.7; shader:flat; opacity:0.8; transparent:true">
     </a-plane>
 
-    <!-- Glowing grid overlay -->
-    <a-plane
-      position="0 0.02 0" rotation="-90 0 0" width="120" height="120"
-      material="color:#1a0a3e; emissive:#6366f1; emissiveIntensity:0.08; roughness:1; repeat:30 30; wireframe:true; opacity:0.4; transparent:true">
-    </a-plane>
+    <!-- ══ GRAND ENTRANCE ARCH ════════════════════════════════════ -->
+    <!-- Left column -->
+    <a-cylinder position="-3.2 3 -2" radius="0.28" height="6"
+      material="color:#1e1b4b; roughness:0.2; metalness:0.85">
+    </a-cylinder>
+    <a-cylinder position="-3.2 6.2 -2" radius="0.38" height="0.35"
+      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.8">
+    </a-cylinder>
+    <a-light type="point" position="-3.2 6.5 -2" color="#818cf8" intensity="0.8" distance="6"></a-light>
 
-    <!-- =========== CENTRAL TEMPLE COMPLEX =========== -->
-
-    <!-- Grand elevated platform base -->
-    <a-cylinder position="0 0.3 -8" radius="14" height="0.6"
-      material="color:#0d0b1f; roughness:0.3; metalness:0.7">
+    <!-- Right column -->
+    <a-cylinder position="3.2 3 -2" radius="0.28" height="6"
+      material="color:#1e1b4b; roughness:0.2; metalness:0.85">
     </a-cylinder>
-    <a-cylinder position="0 0.2 -8" radius="14.2" height="0.2"
-      material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.5; roughness:0.1">
+    <a-cylinder position="3.2 6.2 -2" radius="0.38" height="0.35"
+      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.8">
     </a-cylinder>
-
-    <!-- Mid platform ring -->
-    <a-cylinder position="0 0.7 -8" radius="9" height="0.5"
-      material="color:#110e22; roughness:0.3; metalness:0.8">
-    </a-cylinder>
-    <a-cylinder position="0 0.62 -8" radius="9.15" height="0.15"
-      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.6; roughness:0.1">
-    </a-cylinder>
-
-    <!-- Inner altar platform -->
-    <a-cylinder position="0 1.1 -8" radius="5" height="0.8"
-      material="color:#1a1440; roughness:0.2; metalness:0.9">
-    </a-cylinder>
-    <a-cylinder position="0 1.01 -8" radius="5.15" height="0.12"
-      material="color:#a855f7; emissive:#a855f7; emissiveIntensity:0.8; roughness:0.05">
-    </a-cylinder>
-
-    <!-- Temple floor pattern: glowing concentric rings on altar -->
-    <a-ring position="0 1.52 -8" rotation="-90 0 0" radius-inner="1.5" radius-outer="1.55"
-      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:1; shader:flat">
-    </a-ring>
-    <a-ring position="0 1.52 -8" rotation="-90 0 0" radius-inner="2.8" radius-outer="2.85"
-      material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.7; shader:flat">
-    </a-ring>
-    <a-ring position="0 1.52 -8" rotation="-90 0 0" radius-inner="4" radius-outer="4.04"
-      material="color:#4f46e5; emissive:#4f46e5; emissiveIntensity:0.5; shader:flat">
-    </a-ring>
-
-    <!-- =========== GRAND ENTRY ARCH =========== -->
-    <!-- Left pillar -->
-    <a-cylinder position="-4 4 1" radius="0.5" height="8"
-      material="color:#1e1b4b; roughness:0.2; metalness:0.8">
-    </a-cylinder>
-    <a-cylinder position="-4 8.2 1" radius="0.7" height="0.4"
-      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.7">
-    </a-cylinder>
-    <a-cylinder position="-4 0.2 1" radius="0.7" height="0.4"
-      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.7">
-    </a-cylinder>
-    <a-light type="point" position="-4 8.5 1" color="#818cf8" intensity="1" distance="8"></a-light>
-
-    <!-- Right pillar -->
-    <a-cylinder position="4 4 1" radius="0.5" height="8"
-      material="color:#1e1b4b; roughness:0.2; metalness:0.8">
-    </a-cylinder>
-    <a-cylinder position="4 8.2 1" radius="0.7" height="0.4"
-      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.7">
-    </a-cylinder>
-    <a-cylinder position="4 0.2 1" radius="0.7" height="0.4"
-      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.7">
-    </a-cylinder>
-    <a-light type="point" position="4 8.5 1" color="#818cf8" intensity="1" distance="8"></a-light>
+    <a-light type="point" position="3.2 6.5 -2" color="#818cf8" intensity="0.8" distance="6"></a-light>
 
     <!-- Arch crossbar -->
-    <a-box position="0 8.3 1" width="8" height="0.6" depth="0.8"
-      material="color:#1e1b4b; roughness:0.2; metalness:0.8">
+    <a-box position="0 6.15 -2" width="6.8" height="0.5" depth="0.45"
+      material="color:#1e1b4b; roughness:0.2; metalness:0.85">
     </a-box>
-    <a-box position="0 8.65 1" width="8.2" height="0.08" depth="0.85"
-      material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.9">
+    <a-box position="0 6.42 -2" width="7" height="0.08" depth="0.5"
+      material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.9; shader:flat">
     </a-box>
 
-    <!-- Arch rune text  -->
-    <a-text value="AETHERIA" position="0 8.3 1.45" align="center" color="#c7d2fe" width="4" font="kelsonsans"></a-text>
+    <!-- ══ CENTRAL CRYSTAL SPIRE ══════════════════════════════════
+         The hero object of Aetheria. Tall, multi-shard, with
+         orbital rings, base glow and reactive lighting.
+    ═════════════════════════════════════════════════════════════ -->
+    <a-entity position="0 0 -10" crystal-cycle class="clickable" hover-glow>
 
-    <!-- Arch steps -->
-    <a-box position="0 0.12 2" width="10" height="0.24" depth="1.2" material="color:#1e1b4b; metalness:0.6"></a-box>
-    <a-box position="0 0.36 1.4" width="9.2" height="0.24" depth="0.8" material="color:#2d2a5e; metalness:0.6"></a-box>
+      <!-- Raised altar platform (3 tiers) -->
+      <a-cylinder position="0 0.15 0"  radius="4.5" height="0.3"  material="color:#100d28; roughness:0.3; metalness:0.7"></a-cylinder>
+      <a-cylinder position="0 0.08 0"  radius="4.6" height="0.1"  material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.6; shader:flat"></a-cylinder>
+      <a-cylinder position="0 0.55 0"  radius="3"   height="0.5"  material="color:#140f30; roughness:0.2; metalness:0.8"></a-cylinder>
+      <a-cylinder position="0 0.52 0"  radius="3.1" height="0.1"  material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.7; shader:flat"></a-cylinder>
+      <a-cylinder position="0 1.05 0"  radius="1.8" height="0.6"  material="color:#1a1440; roughness:0.2; metalness:0.9"></a-cylinder>
+      <a-cylinder position="0 1.0 0"   radius="1.88" height="0.1" material="color:#a5b4fc; emissive:#a5b4fc; emissiveIntensity:0.9; shader:flat"></a-cylinder>
 
-    <!-- =========== 8 ENERGY PILLARS around outer platform =========== -->
-    <!-- Pillar macro: cylinder + glowing cap + point light, at 8 positions on radius ~12 -->
-    <!-- North -->
-    <a-entity position="0 0 -20">
-      <a-cylinder radius="0.6" height="6" material="color:#1e1b4b; roughness:0.2; metalness:0.85"></a-cylinder>
-      <a-cylinder position="0 3.2 0" radius="0.8" height="0.3" material="color:#6366f1; emissive:#6366f1; emissiveIntensity:1"></a-cylinder>
-      <a-light type="point" position="0 3.5 0" color="#6366f1" intensity="1.5" distance="10"></a-light>
-    </a-entity>
-    <!-- NE -->
-    <a-entity position="8.5 0 -17">
-      <a-cylinder radius="0.6" height="7" material="color:#1e1b4b; roughness:0.2; metalness:0.85"></a-cylinder>
-      <a-cylinder position="0 3.7 0" radius="0.8" height="0.3" material="color:#ec4899; emissive:#ec4899; emissiveIntensity:1"></a-cylinder>
-      <a-light type="point" position="0 4 0" color="#ec4899" intensity="1.5" distance="10"></a-light>
-    </a-entity>
-    <!-- East -->
-    <a-entity position="13 0 -8">
-      <a-cylinder radius="0.6" height="5" material="color:#1e1b4b; roughness:0.2; metalness:0.85"></a-cylinder>
-      <a-cylinder position="0 2.7 0" radius="0.8" height="0.3" material="color:#06b6d4; emissive:#06b6d4; emissiveIntensity:1"></a-cylinder>
-      <a-light type="point" position="0 3 0" color="#06b6d4" intensity="1.5" distance="10"></a-light>
-    </a-entity>
-    <!-- SE -->
-    <a-entity position="8.5 0 1">
-      <a-cylinder radius="0.6" height="6" material="color:#1e1b4b; roughness:0.2; metalness:0.85"></a-cylinder>
-      <a-cylinder position="0 3.2 0" radius="0.8" height="0.3" material="color:#10b981; emissive:#10b981; emissiveIntensity:1"></a-cylinder>
-      <a-light type="point" position="0 3.5 0" color="#10b981" intensity="1.5" distance="10"></a-light>
-    </a-entity>
-    <!-- NW -->
-    <a-entity position="-8.5 0 -17">
-      <a-cylinder radius="0.6" height="7" material="color:#1e1b4b; roughness:0.2; metalness:0.85"></a-cylinder>
-      <a-cylinder position="0 3.7 0" radius="0.8" height="0.3" material="color:#f59e0b; emissive:#f59e0b; emissiveIntensity:1"></a-cylinder>
-      <a-light type="point" position="0 4 0" color="#f59e0b" intensity="1.5" distance="10"></a-light>
-    </a-entity>
-    <!-- West -->
-    <a-entity position="-13 0 -8">
-      <a-cylinder radius="0.6" height="5" material="color:#1e1b4b; roughness:0.2; metalness:0.85"></a-cylinder>
-      <a-cylinder position="0 2.7 0" radius="0.8" height="0.3" material="color:#a855f7; emissive:#a855f7; emissiveIntensity:1"></a-cylinder>
-      <a-light type="point" position="0 3 0" color="#a855f7" intensity="1.5" distance="10"></a-light>
-    </a-entity>
-    <!-- SW -->
-    <a-entity position="-8.5 0 1">
-      <a-cylinder radius="0.6" height="6" material="color:#1e1b4b; roughness:0.2; metalness:0.85"></a-cylinder>
-      <a-cylinder position="0 3.2 0" radius="0.8" height="0.3" material="color:#ef4444; emissive:#ef4444; emissiveIntensity:1"></a-cylinder>
-      <a-light type="point" position="0 3.5 0" color="#ef4444" intensity="1.5" distance="10"></a-light>
-    </a-entity>
-    <!-- NorthExtra -->
-    <a-entity position="0 0 4">
-      <a-cylinder radius="0.5" height="4.5" material="color:#1e1b4b; roughness:0.2; metalness:0.85"></a-cylinder>
-      <a-cylinder position="0 2.5 0" radius="0.7" height="0.25" material="color:#818cf8; emissive:#818cf8; emissiveIntensity:1"></a-cylinder>
-      <a-light type="point" position="0 2.7 0" color="#818cf8" intensity="1.2" distance="8"></a-light>
-    </a-entity>
-
-    <!-- =========== CENTRAL GRAND CRYSTAL SPIRE =========== -->
-    <a-entity position="0 1.5 -8" crystal-color class="clickable" hover-glow>
-
-      <!-- Main spire shaft -->
-      <a-cone data-crystal
-        radius-bottom="0.5" radius-top="0.05" height="7"
-        material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.8; roughness:0.05; metalness:0.9"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 18000; easing: linear">
+      <!-- Main crystal body - tall cone -->
+      <a-cone data-c
+        position="0 5.8 0"
+        radius-bottom="0.6" radius-top="0.02" height="9.5"
+        material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.85; roughness:0.04; metalness:0.95"
+        animation="property:rotation; to:0 360 0; loop:true; dur:22000; easing:linear">
       </a-cone>
 
-      <!-- Mid shard -->
-      <a-cone data-crystal
-        position="0.4 2 0" rotation="0 0 25"
-        radius-bottom="0.25" radius-top="0.02" height="3.5"
-        material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.8; roughness:0.05; metalness:0.9"
-        animation="property: rotation; to: 360 0 25; loop: true; dur: 14000; easing: linear">
-      </a-cone>
-      <a-cone data-crystal
-        position="-0.4 1.5 0" rotation="0 0 -20"
-        radius-bottom="0.2" radius-top="0.02" height="3"
-        material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.8; roughness:0.05; metalness:0.9"
-        animation="property: rotation; to: -360 0 -20; loop: true; dur: 16000; easing: linear">
-      </a-cone>
-      <a-cone data-crystal
-        position="0 1 0.4" rotation="15 0 0"
-        radius-bottom="0.22" radius-top="0.02" height="2.8"
+      <!-- Side crystal shards -->
+      <a-cone data-c position="0.7 3.5 0.3" rotation="0 0 22" radius-bottom="0.28" radius-top="0.02" height="5.5"
         material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.8; roughness:0.05; metalness:0.9">
       </a-cone>
+      <a-cone data-c position="-0.7 3 -0.3" rotation="0 0 -18" radius-bottom="0.22" radius-top="0.02" height="4.5"
+        material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.8; roughness:0.05; metalness:0.9">
+      </a-cone>
+      <a-cone data-c position="0.2 2.8 -0.6" rotation="15 0 0" radius-bottom="0.18" radius-top="0.02" height="4"
+        material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.7; roughness:0.05; metalness:0.9">
+      </a-cone>
+      <a-cone data-c position="-0.4 4 0.5" rotation="-12 0 0" radius-bottom="0.16" radius-top="0.02" height="3.5"
+        material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.7; roughness:0.05; metalness:0.9">
+      </a-cone>
 
-      <!-- Core glowing orb at base of spire -->
-      <a-sphere data-crystal radius="0.7"
+      <!-- Core pulsing orb at base -->
+      <a-sphere data-c position="0 1.4 0" radius="0.8"
         material="color:#6366f1; emissive:#6366f1; emissiveIntensity:1; roughness:0; metalness:1; opacity:0.9; transparent:true"
-        animation="property: scale; dir: alternate; to: 1.15 1.15 1.15; loop: true; dur: 1200; easing: easeInOutSine">
+        animation="property:scale; dir:alternate; to:1.18 1.18 1.18; loop:true; dur:1400; easing:easeInOutSine">
       </a-sphere>
 
-      <!-- Crystal point lights -->
-      <a-light data-clight type="point" color="#6366f1" intensity="4" distance="16"></a-light>
-      <a-light data-clight type="point" position="0 4 0" color="#6366f1" intensity="2.5" distance="12"></a-light>
-
-      <!-- Rotating orbital rings -->
-      <a-torus position="0 2 0" radius="2.2" radius-tubular="0.04"
-        material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.8"
-        animation="property: rotation; to: 360 0 0; loop: true; dur: 8000; easing: linear">
+      <!-- Orbital rings at different heights + angles -->
+      <a-torus position="0 3 0" radius="3.2" radius-tubular="0.05"
+        material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.7"
+        animation="property:rotation; to:360 0 0; loop:true; dur:9000; easing:linear">
       </a-torus>
-      <a-torus position="0 2 0" radius="2.5" radius-tubular="0.03"
+      <a-torus position="0 5 0" radius="2.8" radius-tubular="0.04"
         material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.6"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 11000; easing: linear">
+        animation="property:rotation; to:0 0 360; loop:true; dur:12000; easing:linear">
       </a-torus>
-      <a-torus position="0 2 0" radius="2.8" radius-tubular="0.025"
+      <a-torus position="0 7 0" radius="2.2" radius-tubular="0.035"
         material="color:#4f46e5; emissive:#4f46e5; emissiveIntensity:0.5"
-        animation="property: rotation; to: 360 360 0; loop: true; dur: 15000; easing: linear">
+        animation="property:rotation; to:360 360 0; loop:true; dur:15000; easing:linear">
       </a-torus>
 
-      <!-- Floating text label (world-space, not a sign box) -->
-      <a-text id="crystal-name" value="Indigo Storm"
-        position="0 -1.3 0" align="center" color="#c7d2fe" width="6"
-        font="kelsonsans">
-      </a-text>
-      <a-text value="Tap to cycle" position="0 -1.65 0" align="center" color="#6366f1" width="4" font="kelsonsans"></a-text>
+      <!-- Crystal lights -->
+      <a-light data-cl type="point" color="#6366f1" intensity="5"   distance="18" position="0 2 0"></a-light>
+      <a-light data-cl type="point" color="#6366f1" intensity="2.5" distance="10" position="0 8 0"></a-light>
+
+      <!-- World-space label below platform -->
+      <a-text id="c-label" value="Indigo Storm" position="0 -0.5 2.5" align="center" color="#c7d2fe" width="7" font="kelsonsans"></a-text>
+      <a-text value="✦ Tap crystal to cycle energy" position="0 -0.9 2.5" align="center" color="#6366f1" width="5" font="kelsonsans"></a-text>
     </a-entity>
 
-    <!-- =========== REALM PORTAL (Left, facing inward) =========== -->
-    <a-entity position="-9 1.5 -8" rotation="0 35 0" realm-portal class="clickable" hover-glow>
-      <!-- Portal frame outer -->
-      <a-torus radius="2.2" radius-tubular="0.18"
-        material="color:#06b6d4; emissive:#06b6d4; emissiveIntensity:1; roughness:0.1; metalness:0.9"
-        animation="property: rotation; to: 0 0 360; loop: true; dur: 20000; easing: linear">
-      </a-torus>
-
-      <!-- Inner spinning smaller ring -->
-      <a-torus radius="1.8" radius-tubular="0.08"
-        material="color:#3b82f6; emissive:#3b82f6; emissiveIntensity:0.8"
-        animation="property: rotation; to: 0 0 -360; loop: true; dur: 8000; easing: linear">
-      </a-torus>
-
-      <!-- Portal void disc -->
-      <a-circle radius="1.75"
-        material="color:#020617; emissive:#0c1445; emissiveIntensity:0.5; side:double; opacity:0.92; transparent:true"
-        animation="property: rotation; to: 0 0 360; loop: true; dur: 15000; easing: linear">
-      </a-circle>
-
-      <!-- Animated energy particles floating through portal -->
-      <a-sphere position="0 0 0.1" radius="0.12"
-        material="color:#38bdf8; emissive:#38bdf8; emissiveIntensity:1; shader:flat"
-        animation="property: position; from: -0.8 -0.8 0.1; to: 0.8 0.8 0.1; loop: true; dur: 2000; easing: easeInOutSine; dir: alternate">
-      </a-sphere>
-      <a-sphere position="0 0 0.1" radius="0.08"
-        material="color:#818cf8; emissive:#818cf8; emissiveIntensity:1; shader:flat"
-        animation="property: position; from: 0.6 -0.6 0.1; to: -0.6 0.6 0.1; loop: true; dur: 2800; easing: easeInOutSine; dir: alternate">
-      </a-sphere>
-
-      <!-- Ambient glow from portal -->
-      <a-light type="point" color="#06b6d4" intensity="2" distance="8"></a-light>
-
-      <!-- World-space label -->
-      <a-text id="portal-realm-name" value="Nebula Void" position="0 -2.8 0" align="center" color="#38bdf8" width="5" font="kelsonsans"></a-text>
-      <a-text value="Portal · Tap to switch realm" position="0 -3.2 0" align="center" color="#0ea5e9" width="4" font="kelsonsans"></a-text>
-    </a-entity>
-
-    <!-- =========== ENERGY ORB SHRINE (Right side) =========== -->
-    <a-entity position="9 1.5 -8">
-      <!-- Shrine altar box -->
-      <a-box position="0 -0.9 0" width="2.5" height="1.8" depth="2.5"
-        material="color:#110e22; roughness:0.3; metalness:0.8">
-      </a-box>
-      <a-box position="0 0.02 0" width="2.7" height="0.1" depth="2.7"
-        material="color:#a855f7; emissive:#a855f7; emissiveIntensity:0.5">
-      </a-box>
-
-      <!-- Side altar spires -->
-      <a-cone position="-0.8 0.8 0" radius-bottom="0.15" radius-top="0.02" height="1.6"
-        material="color:#a855f7; emissive:#a855f7; emissiveIntensity:0.6">
-      </a-cone>
-      <a-cone position="0.8 0.8 0" radius-bottom="0.15" radius-top="0.02" height="1.6"
-        material="color:#a855f7; emissive:#a855f7; emissiveIntensity:0.6">
-      </a-cone>
-
-      <!-- Large orbiting energy orb -->
-      <a-sphere class="clickable" energy-orb hover-glow radius="0.9"
-        material="color:#a855f7; emissive:#a855f7; emissiveIntensity:0.7; roughness:0.05; metalness:0.9; opacity:0.88; transparent:true"
-        animation="property: position; from: 9 2.4 -8; to: 9 2.9 -8; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
-      </a-sphere>
-      <a-light type="point" position="0 1.5 0" color="#a855f7" intensity="2.5" distance="10"></a-light>
-
-      <!-- Shrine label -->
-      <a-text value="Arcane Shrine" position="0 2.8 0" align="center" color="#d8b4fe" width="5" font="kelsonsans"></a-text>
-      <a-text value="Tap orb to activate" position="0 2.44 0" align="center" color="#a855f7" width="4" font="kelsonsans"></a-text>
-    </a-entity>
-
-    <!-- =========== ASTRONAUT EXPLORER (Far left alcove) =========== -->
-    <a-entity position="-6 0 1">
-      <!-- Alcove base -->
-      <a-cylinder position="0 0.15 0" radius="1.8" height="0.3"
-        material="color:#1e1b4b; metalness:0.7">
+    <!-- ══ REALM PORTAL (Left wing) ══════════════════════════════ -->
+    <a-entity position="-8 0 -9" rotation="0 28 0">
+      <!-- Elevated base -->
+      <a-cylinder position="0 0.2 0" radius="2.2" height="0.4"
+        material="color:#0f0c26; roughness:0.2; metalness:0.8">
       </a-cylinder>
-      <a-cylinder position="0 0.06 0" radius="1.85" height="0.12"
-        material="color:#06b6d4; emissive:#06b6d4; emissiveIntensity:0.6">
+      <a-cylinder position="0 0.12 0" radius="2.3" height="0.12"
+        material="color:#06b6d4; emissive:#06b6d4; emissiveIntensity:0.7; shader:flat">
       </a-cylinder>
 
-      <!-- Astronaut model -->
-      <a-entity gltf-model="#astronaut-model" scale="0.95 0.95 0.95" position="0 0.3 0" rotation="0 50 0"
-        class="clickable" hover-glow
-        animation="property: position; dir: alternate; from: -6 0.3 1; to: -6 0.5 1; loop: true; dur: 2600; easing: easeInOutSine">
+      <!-- Portal entity (clickable) -->
+      <a-entity position="0 2.8 0" portal-switch class="clickable" hover-glow>
+        <!-- Outer frame -->
+        <a-torus radius="1.8" radius-tubular="0.14"
+          material="color:#06b6d4; emissive:#06b6d4; emissiveIntensity:1; roughness:0.1; metalness:0.9"
+          animation="property:rotation; to:0 0 360; loop:true; dur:18000; easing:linear">
+        </a-torus>
+        <!-- Inner ring -->
+        <a-torus radius="1.45" radius-tubular="0.07"
+          material="color:#38bdf8; emissive:#38bdf8; emissiveIntensity:0.8"
+          animation="property:rotation; to:0 0 -360; loop:true; dur:9000; easing:linear">
+        </a-torus>
+        <!-- Void disc -->
+        <a-circle radius="1.38"
+          material="color:#010b1a; emissive:#0c1a3a; emissiveIntensity:0.6; side:double; opacity:0.94; transparent:true"
+          animation="property:rotation; to:0 0 360; loop:true; dur:25000; easing:linear">
+        </a-circle>
+        <!-- Portal energy particles -->
+        <a-sphere radius="0.1" material="color:#38bdf8; emissive:#38bdf8; emissiveIntensity:1; shader:flat"
+          animation="property:position; from:-0.9 -0.9 0.12; to:0.9 0.9 0.12; dir:alternate; loop:true; dur:2200; easing:easeInOutSine">
+        </a-sphere>
+        <a-sphere radius="0.08" material="color:#818cf8; emissive:#818cf8; emissiveIntensity:1; shader:flat"
+          animation="property:position; from:0.7 -0.8 0.12; to:-0.7 0.8 0.12; dir:alternate; loop:true; dur:3000; easing:easeInOutSine">
+        </a-sphere>
+        <a-sphere radius="0.07" material="color:#c7d2fe; emissive:#c7d2fe; emissiveIntensity:1; shader:flat"
+          animation="property:position; from:-0.3 0.9 0.12; to:0.3 -0.9 0.12; dir:alternate; loop:true; dur:2700; easing:easeInOutSine">
+        </a-sphere>
+        <a-light type="point" color="#06b6d4" intensity="3" distance="9"></a-light>
       </a-entity>
 
-      <a-light type="point" position="0 2.5 0" color="#38bdf8" intensity="1.2" distance="6"></a-light>
-      <a-text value="Explorer Vanguard" position="0 2.6 0" align="center" color="#38bdf8" width="5" font="kelsonsans"></a-text>
+      <!-- Portal labels (world space, clean) -->
+      <a-text id="p-label" value="Nebula Rift"  position="0 5.5 0" align="center" color="#38bdf8" width="5" font="kelsonsans"></a-text>
+      <a-text value="✦ Tap to shift realm"       position="0 5.1 0" align="center" color="#0ea5e9" width="4" font="kelsonsans"></a-text>
     </a-entity>
 
-    <!-- =========== COMPANION ROBOT (Far right alcove) =========== -->
-    <a-entity position="6 0 1">
-      <!-- Alcove base -->
-      <a-cylinder position="0 0.15 0" radius="1.8" height="0.3"
-        material="color:#1e1b4b; metalness:0.7">
+    <!-- ══ EXPLORER VANGUARD — Astronaut (Right wing) ═══════════ -->
+    <a-entity position="7.5 0 -9">
+      <!-- Platform -->
+      <a-cylinder position="0 0.2 0" radius="2" height="0.4"
+        material="color:#0f0c26; roughness:0.2; metalness:0.8">
       </a-cylinder>
-      <a-cylinder position="0 0.06 0" radius="1.85" height="0.12"
-        material="color:#ec4899; emissive:#ec4899; emissiveIntensity:0.6">
+      <a-cylinder position="0 0.12 0" radius="2.1" height="0.12"
+        material="color:#06b6d4; emissive:#06b6d4; emissiveIntensity:0.7; shader:flat">
+      </a-cylinder>
+
+      <!-- Rotating rune ring on floor -->
+      <a-ring position="0 0.42 0" rotation="-90 0 0" radius-inner="0.8" radius-outer="0.85"
+        material="color:#38bdf8; emissive:#38bdf8; emissiveIntensity:0.9; shader:flat"
+        animation="property:rotation; to:-90 360 0; loop:true; dur:12000; easing:linear">
+      </a-ring>
+
+      <!-- Astronaut model -->
+      <a-entity gltf-model="#astro" scale="1 1 1" position="0 0.4 0" rotation="0 -35 0"
+        class="clickable" hover-glow
+        animation__float="property:position; from:7.5 0.4 -9; to:7.5 0.65 -9; dir:alternate; loop:true; dur:2800; easing:easeInOutSine">
+      </a-entity>
+
+      <a-light type="point" position="0 3 0" color="#38bdf8" intensity="1.5" distance="8"></a-light>
+      <a-text value="Explorer Vanguard"   position="0 3 0"    align="center" color="#7dd3fc" width="5" font="kelsonsans"></a-text>
+    </a-entity>
+
+    <!-- ══ COMPANION BOT (Back centre-right) ════════════════════ -->
+    <a-entity position="4 0 -15">
+      <!-- Platform -->
+      <a-cylinder position="0 0.2 0" radius="1.8" height="0.4"
+        material="color:#1a0020; roughness:0.2; metalness:0.8">
+      </a-cylinder>
+      <a-cylinder position="0 0.12 0" radius="1.9" height="0.12"
+        material="color:#ec4899; emissive:#ec4899; emissiveIntensity:0.7; shader:flat">
       </a-cylinder>
 
       <!-- Robot model -->
-      <a-entity gltf-model="#robot-model" scale="0.75 0.75 0.75" position="0 0.3 0" rotation="0 -50 0"
-        animation-mixer="clip: Dance; loop: repeat;"
-        class="clickable" hover-glow>
+      <a-entity gltf-model="#robot" scale="0.8 0.8 0.8" position="0 0.4 0" rotation="0 20 0"
+        animation-mixer="clip:Dance; loop:repeat;"
+        robot-dance class="clickable" hover-glow>
       </a-entity>
 
-      <a-light type="point" position="0 2.5 0" color="#ec4899" intensity="1.2" distance="6"></a-light>
-      <a-text value="Companion Bot" position="0 2.6 0" align="center" color="#f472b6" width="5" font="kelsonsans"></a-text>
+      <a-light type="point" position="0 2.5 0" color="#ec4899" intensity="1.8" distance="8"></a-light>
+      <a-text value="Companion Bot · Tap to dance" position="0 2.8 0" align="center" color="#f472b6" width="4.5" font="kelsonsans"></a-text>
     </a-entity>
 
-    <!-- =========== FLOATING ISLAND PLATFORMS (background mid-distance) =========== -->
-    <!-- Left floating island -->
-    <a-entity position="-18 5 -18">
-      <a-cylinder radius="5" height="2"
-        material="color:#0d0b1f; roughness:0.5; metalness:0.5">
+    <!-- ══ ANCIENT RELIC — Helmet (Back left) ═══════════════════ -->
+    <a-entity position="-5 0 -16">
+      <!-- Display stand -->
+      <a-cylinder position="0 0.6 0" radius="0.7" height="1.2"
+        material="color:#110e22; roughness:0.3; metalness:0.8">
       </a-cylinder>
-      <!-- island bottom taper -->
-      <a-cone position="0 -1.8 0" radius-bottom="1" radius-top="5" height="2"
-        material="color:#0d0b1f; roughness:0.5; metalness:0.5">
+      <a-cylinder position="0 1.25 0" radius="0.75" height="0.1"
+        material="color:#a855f7; emissive:#a855f7; emissiveIntensity:0.6; shader:flat">
+      </a-cylinder>
+
+      <!-- Helmet on stand -->
+      <a-entity gltf-model="#helmet" scale="1.1 1.1 1.1" position="0 2 0" rotation="0 0 0"
+        class="clickable" hover-glow
+        animation="property:rotation; to:0 360 0; loop:true; dur:20000; easing:linear">
+      </a-entity>
+
+      <a-light type="point" position="0 2.5 0" color="#a855f7" intensity="1.5" distance="7"></a-light>
+      <a-text value="Ancient Relic"      position="0 3.8 0" align="center" color="#d8b4fe" width="5" font="kelsonsans"></a-text>
+    </a-entity>
+
+    <!-- ══ FLOATING SANCTUARY ISLAND (Far back, overhead) ════════
+         A floating platform in the mid-distance sky creates depth
+         and makes the world feel larger than it is.
+    ═════════════════════════════════════════════════════════════ -->
+    <a-entity position="-14 8 -28"
+      animation="property:position; from:-14 8 -28; to:-14 9.5 -28; dir:alternate; loop:true; dur:7000; easing:easeInOutSine">
+      <!-- Island body -->
+      <a-cylinder radius="5.5" height="1.5"
+        material="color:#0d0b1f; roughness:0.5; metalness:0.6">
+      </a-cylinder>
+      <a-cone position="0 -1.8 0" radius-bottom="1.5" radius-top="5.5" height="2"
+        material="color:#0a0818; roughness:0.6; metalness:0.5">
       </a-cone>
       <!-- Island glow rim -->
-      <a-cylinder position="0 1.06 0" radius="5.1" height="0.12"
-        material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.7">
+      <a-cylinder position="0 0.82 0" radius="5.6" height="0.12"
+        material="color:#818cf8; emissive:#818cf8; emissiveIntensity:0.75; shader:flat">
       </a-cylinder>
-      <!-- Obelisk on island -->
-      <a-cone position="0 3 0" radius-bottom="0.6" radius-top="0.05" height="5"
-        material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.5; roughness:0.1; metalness:0.9"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
+      <!-- Island top decoration: mini obelisk -->
+      <a-cone position="0 3.5 0" radius-bottom="0.5" radius-top="0.04" height="5"
+        material="color:#6366f1; emissive:#6366f1; emissiveIntensity:0.6; roughness:0.1; metalness:0.9"
+        animation="property:rotation; to:0 360 0; loop:true; dur:25000; easing:linear">
       </a-cone>
-      <a-light type="point" position="0 5.5 0" color="#6366f1" intensity="1.5" distance="12"></a-light>
-      <a-light type="point" position="0 1.5 0" color="#818cf8" intensity="0.8" distance="8"></a-light>
-      <!-- Floating animation -->
-      <a-animation attribute="position" from="-18 5 -18" to="-18 6.5 -18" direction="alternate" dur="5000" repeat="indefinite" easing="ease-in-out-sine"></a-animation>
+      <a-light type="point" position="0 6 0"  color="#6366f1" intensity="1.5" distance="12"></a-light>
+      <a-light type="point" position="0 0.5 0" color="#818cf8" intensity="0.8" distance="8"></a-light>
     </a-entity>
 
-    <!-- Right floating island -->
-    <a-entity position="18 7 -20">
-      <a-cylinder radius="4" height="1.5"
-        material="color:#0d0b1f; roughness:0.5; metalness:0.5">
+    <!-- Second floating island (right side) -->
+    <a-entity position="16 11 -32"
+      animation="property:position; from:16 11 -32; to:16 9 -32; dir:alternate; loop:true; dur:9000; easing:easeInOutSine">
+      <a-cylinder radius="4" height="1.2"
+        material="color:#0d0b1f; roughness:0.5; metalness:0.6">
       </a-cylinder>
-      <a-cone position="0 -1.5 0" radius-bottom="0.8" radius-top="4" height="1.8"
-        material="color:#0d0b1f; roughness:0.5; metalness:0.5">
+      <a-cone position="0 -1.4 0" radius-bottom="1" radius-top="4" height="1.8"
+        material="color:#0a0818; roughness:0.6; metalness:0.5">
       </a-cone>
-      <a-cylinder position="0 0.83 0" radius="4.08" height="0.1"
-        material="color:#ec4899; emissive:#ec4899; emissiveIntensity:0.7">
+      <a-cylinder position="0 0.66 0" radius="4.1" height="0.1"
+        material="color:#ec4899; emissive:#ec4899; emissiveIntensity:0.75; shader:flat">
       </a-cylinder>
-      <!-- Portal ring on island -->
-      <a-torus position="0 3 0" radius="1.8" radius-tubular="0.12"
+      <!-- Spinning portal ring on this island -->
+      <a-torus position="0 3 0" radius="2" radius-tubular="0.12"
         material="color:#ec4899; emissive:#ec4899; emissiveIntensity:0.8"
-        animation="property: rotation; to: 360 0 360; loop: true; dur: 10000; easing: linear">
+        animation="property:rotation; to:360 360 0; loop:true; dur:12000; easing:linear">
       </a-torus>
-      <a-light type="point" position="0 3 0" color="#ec4899" intensity="2" distance="12"></a-light>
-      <a-animation attribute="position" from="18 7 -20" to="18 5.5 -20" direction="alternate" dur="6500" repeat="indefinite" easing="ease-in-out-sine"></a-animation>
+      <a-light type="point" position="0 3 0"  color="#ec4899" intensity="2" distance="10"></a-light>
     </a-entity>
 
-    <!-- =========== GLOBAL SCENE LIGHTING =========== -->
-    <!-- Soft ambient -->
-    <a-light type="ambient" color="#1a1440" intensity="0.8"></a-light>
-    <!-- Distant directional key light -->
-    <a-light type="directional" position="-5 15 8" color="#c7d2fe" intensity="0.5" cast-shadow="true"></a-light>
-    <!-- Rim/fill from behind temple -->
-    <a-light type="directional" position="5 8 -20" color="#818cf8" intensity="0.3"></a-light>
-
-    <!-- =========== CAMERA RIG =========== -->
-    <a-entity id="rig" movement-controls="speed: 0.15; fly: false;" position="0 0 5">
-      <a-entity id="camera" camera position="0 1.65 0" look-controls="pointerLockEnabled: false">
-        <a-cursor
-          color="#818cf8"
-          fuse="false"
-          raycaster="objects: .clickable; far: 40"
-          animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 100; from: 0.1 0.1 0.1; to: 1 1 1">
+    <!-- ══ CAMERA RIG (Desktop + Meta Quest 3) ══════════════════ -->
+    <a-entity id="rig" movement-controls="speed:0.17; fly:false;" position="0 0 4">
+      <a-entity id="cam" camera position="0 1.65 0" look-controls="pointerLockEnabled:false">
+        <a-cursor color="#818cf8" fuse="false"
+          raycaster="objects:.clickable; far:40"
+          animation__click="property:scale; startEvents:click; dur:100; easing:easeInCubic; from:0.1 0.1 0.1; to:1 1 1">
         </a-cursor>
       </a-entity>
 
-      <!-- Meta Quest 3 Left Controller -->
-      <a-entity
-        id="leftController"
-        meta-touch-controls="hand: left"
-        oculus-touch-controls="hand: left"
-        laser-controls="hand: left"
-        raycaster="objects: .clickable; far: 40"
-        line="color: #06b6d4; opacity: 0.9">
+      <!-- Meta Quest 3 Touch Controllers -->
+      <a-entity id="lc"
+        meta-touch-controls="hand:left"
+        oculus-touch-controls="hand:left"
+        laser-controls="hand:left"
+        raycaster="objects:.clickable; far:40"
+        line="color:#06b6d4; opacity:0.9">
       </a-entity>
-
-      <!-- Meta Quest 3 Right Controller -->
-      <a-entity
-        id="rightController"
-        meta-touch-controls="hand: right"
-        oculus-touch-controls="hand: right"
-        laser-controls="hand: right"
-        raycaster="objects: .clickable; far: 40"
-        line="color: #ec4899; opacity: 0.9">
+      <a-entity id="rc"
+        meta-touch-controls="hand:right"
+        oculus-touch-controls="hand:right"
+        laser-controls="hand:right"
+        raycaster="objects:.clickable; far:40"
+        line="color:#ec4899; opacity:0.9">
       </a-entity>
     </a-entity>
 
