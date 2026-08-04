@@ -1,51 +1,63 @@
-# 🛸 Aetheria VR — Flying Spaceship Simulator
+# 🛍️ Aetheria Grand Mall — AR/VR Shopping Experience
 
-[![A-Frame](https://img.shields.io/badge/A--Frame-1.7.1-6366f1?style=for-the-badge&logo=aframe)](https://aframe.io/)
-[![Meta Quest 3](https://img.shields.io/badge/Meta_Quest-3%2F3s_Ready-ec4899?style=for-the-badge&logo=meta)](https://www.meta.com/quest/)
-[![WebXR](https://img.shields.io/badge/WebXR-Supported-06b6d4?style=for-the-badge)](https://immersiveweb.dev/)
+[![Three.js](https://img.shields.io/badge/Three.js-r128-6366f1?style=for-the-badge&logo=three.js)](https://threejs.org/)
+[![WebXR](https://img.shields.io/badge/WebXR-VR_Ready-ec4899?style=for-the-badge)](https://immersiveweb.dev/)
+[![Single File](https://img.shields.io/badge/Architecture-Single_HTML-06b6d4?style=for-the-badge)](index.html)
 [![License](https://img.shields.io/badge/License-MIT-10b981?style=for-the-badge)](LICENSE)
 
-> Step inside the cockpit of an advanced 6DoF sci-fi starfighter! Fly through space, maneuver through energy ring checkpoints, and pilot your ship in immersive Virtual Reality built with **A-Frame 1.7.1** for **Meta Quest 3/3s** and Desktop browsers.
+> A fully functional, zero-dependency, single-file **3D AR/VR Shopping Mall Application** built with Three.js (r128), ES6 classes, WebXR, HTML5 Canvas procedural textures, and Web Audio API.
 
 ---
 
-## 🚀 Key Simulator Features
+## 🌟 Application Features
 
-- 🛸 **First-Person Pilot Cockpit**: Sit directly inside the ship's 3D cockpit featuring glass canopy frames, flight yoke joystick, holographic crosshairs, and live digital airspeed/altitude HUD gauges.
-- ⚡ **6DoF Flight Physics**: Smooth 3D flight mechanics with pitch, yaw, and roll controls, acceleration throttle, and turbo engine boost.
-- ⭕ **Aerial Energy Ring Course**: Fly through glowing orbital slalom rings in space. Ring collisions trigger speed boosts, score points, and play audio chimes!
-- 🔊 **Dynamic Engine Audio Synthesizer**: Real-time Web Audio synth engine rumble that scales frequency and volume with your throttle speed.
-- 🪐 **Deep Space Flight Sector**: Galactic Space Station landmark, floating asteroid hazards, and deep space skybox panorama.
+- 🏬 **Realistic 3D Shopping Mall Architecture**:
+  - **6 Dedicated Boutiques**: *Urban Apparel*, *Luxe Leather*, *Kicks & Soles*, *Vanguard Bags*, *Chrono Timepieces*, and *Accessories Co*.
+  - **Atmospheric Interiors**: Reflective marble floors, glass storefront windows, mezzanine level, procedural wood flooring, and ceiling spotlights.
+  - **Animated Escalators**: Working escalator stairs with animated LED step lighting.
+  - **Decorative Flora**: Potted indoor tropical plants and palms.
+
+- 👕 **Interactive 3D Product Catalog**:
+  - Shirts, T-Shirts, Hoodies, Leather Jackets, Trench Coats, Sneakers, Luxury Watches, Leather Backpacks, Sunglasses.
+  - Procedural Canvas-generated product patterns, brand logos, and store entrance banners embedded dynamically inside JavaScript.
+
+- 🎯 **Smart Gaze Detection & Product Cards**:
+  - Continuous camera raycasting detects when player gaze points at a product.
+  - **0.5s Gaze**: Highlights product with hover glow & displays floating glassmorphism product card.
+  - **1.5s Gaze**: Smoothly reveals interactive action buttons (**Add to Cart**, **Buy Now**, **Wishlist**).
+
+- 🚶 **Animated Shopper NPCs**:
+  - Autonomous AI shopper NPCs walking around the mall with obstacle avoidance.
+
+- 🗺️ **Live 2D Mini Map & Glassmorphism HUD**:
+  - Real-time radar minimap tracking player position and shopper NPCs.
+  - Interactive Shopping Cart count badge, Wishlist badge, and FPS performance counter.
+
+- 🔊 **Embedded Web Audio Synthesizer**:
+  - Real-time synthesized footstep audio, gaze hover chimes, and purchase confirmation sound sequences without external file dependencies.
 
 ---
 
-## 🎮 Flight Controls
+## 🎮 Controls
 
-| Control Action | Desktop Key | Meta Quest 3 / 3s VR |
-| :--- | :--- | :--- |
-| **Throttle Up / Down** | <kbd>W</kbd> / <kbd>S</kbd> or <kbd>↑</kbd> / <kbd>↓</kbd> | Automatic / Controller Trigger |
-| **Steer Left / Right (Yaw & Roll)** | <kbd>A</kbd> / <kbd>D</kbd> or <kbd>←</kbd> / <kbd>→</kbd> | Right Touch Thumbstick |
-| **Pitch Nose Up / Down** | <kbd>I</kbd> / <kbd>K</kbd> | Right Touch Thumbstick |
-| **Turbo Boost** | <kbd>Space</kbd> | Controller Grip |
-
----
-
-## 🌐 Launch on Meta Quest 3 (GitHub Pages)
-
-1. Open your headset's **Meta Quest Browser**.
-2. Visit: `https://shivankxd.github.io/ARVR-Project/`
-3. Click the glowing **"VR"** button in the bottom-right corner to step directly into the pilot seat!
+| Action | Control Key |
+| :--- | :--- |
+| **Walk Mall** | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> |
+| **Look Around** | **Mouse Drag** (Click screen to lock pointer) |
+| **Inspect & Buy Product** | **Hold Gaze Reticle** on product for 0.5s – 1.5s |
+| **VR Mode** | Click **ENTER VR MODE** button |
 
 ---
 
-## 💻 Local Development Setup
+## 🌐 Launching on Web & Meta Quest VR
 
+### Local Setup
 ```bash
-# Clone the repository
 git clone https://github.com/ShivankXD/ARVR-Project.git
-
-# Launch local server
+cd ARVR-Project
 npx http-server -p 8080 -o
 ```
-
 Open `http://localhost:8080` in your web browser.
+
+### Meta Quest 3 VR
+Visit `https://shivankxd.github.io/ARVR-Project/` in Meta Quest Browser and click **ENTER VR MODE**.

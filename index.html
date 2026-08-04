@@ -2,518 +2,1343 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Aetheria — VR Flying Spaceship Simulator | Meta Quest 3</title>
-  <meta name="description" content="A high-speed 6DoF VR Spaceship Flight Simulator built with A-Frame for Meta Quest 3 and Desktop.">
+  <title>Aetheria Grand Mall — Next-Gen AR/VR Shopping Experience</title>
+  <meta name="description" content="A fully functional, immersive 3D AR/VR Shopping Mall built with Three.js and WebXR in a single file.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-  <!-- A-Frame 1.7.1 & A-Frame Extras -->
-  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <style>
     :root {
+      --bg-glass: rgba(15, 23, 42, 0.75);
+      --border-glass: rgba(255, 255, 255, 0.15);
       --primary: #6366f1;
+      --primary-hover: #4f46e5;
       --secondary: #ec4899;
-      --cyan: #06b6d4;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-gold: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
     }
 
-    body {
+    * {
+      box-sizing: border-box;
       margin: 0;
-      overflow: hidden;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: #000;
+      padding: 0;
       user-select: none;
+      -webkit-user-select: none;
     }
 
-    /* 2D Pilot HUD Overlay */
-    #pilot-hud {
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #030712;
+      color: var(--text-main);
+    }
+
+    #webgl-container {
+      width: 100vw;
+      height: 100vh;
       position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    /* Crosshair */
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 12px;
+      height: 12px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #crosshair::before {
+      content: '';
+      width: 4px;
+      height: 4px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.9), 0 0 16px var(--accent-cyan);
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    #crosshair.active::before {
+      transform: scale(2.2);
+      background-color: var(--secondary);
+      box-shadow: 0 0 12px var(--secondary), 0 0 24px var(--secondary);
+    }
+
+    /* Glassmorphism HUD Overlay */
+    .hud-element {
+      position: fixed;
+      z-index: 10;
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 16px;
+      color: var(--text-main);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Header Bar */
+    #header-hud {
       top: 20px;
       left: 20px;
-      z-index: 999;
-      background: rgba(8, 12, 26, 0.85);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(6, 182, 212, 0.4);
-      border-radius: 16px;
-      padding: 16px 20px;
-      color: #fff;
-      min-width: 280px;
-      box-shadow: 0 0 25px rgba(6, 182, 212, 0.25);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
     }
 
-    .hud-title {
-      font-size: 1.1rem;
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Outfit', sans-serif;
       font-weight: 800;
-      letter-spacing: 0.05em;
-      background: linear-gradient(135deg, var(--cyan), var(--primary));
+      font-size: 1.2rem;
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.5);
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #ffffff, #cbd5e1);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 8px;
+    }
+
+    /* Stats HUD (Cart, Wishlist, FPS) */
+    #stats-hud {
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 18px;
     }
 
-    .hud-stat-row {
+    .hud-badge-btn {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 6px;
-      font-size: 0.82rem;
-      color: #cbd5e1;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      transition: transform 0.2s ease, color 0.2s ease;
     }
 
-    .hud-value {
-      font-family: monospace;
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--cyan);
+    .hud-badge-btn:hover {
+      transform: translateY(-2px);
+      color: #fff;
     }
 
-    .controls-help {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    .badge-count {
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: var(--primary);
       font-size: 0.75rem;
-      color: #94a3b8;
-      line-height: 1.4;
+      font-weight: 700;
     }
 
-    .key-tag {
+    .badge-count.wishlist {
+      background: var(--secondary);
+    }
+
+    #fps-counter {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    /* Mini Map HUD */
+    #minimap-container {
+      bottom: 24px;
+      left: 24px;
+      width: 160px;
+      height: 160px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #minimap-canvas {
+      width: 144px;
+      height: 144px;
+      border-radius: 10px;
+      background: #090d16;
+    }
+
+    /* Controls & Instructions HUD */
+    #controls-hud {
+      bottom: 24px;
+      right: 24px;
+      padding: 14px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .key-badge {
       background: rgba(255, 255, 255, 0.12);
       border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 1px 5px;
+      padding: 1px 6px;
       border-radius: 4px;
       font-family: monospace;
       color: #fff;
     }
 
-    /* VR Enter Button */
-    .a-enter-vr-button {
-      background: linear-gradient(135deg, var(--cyan), var(--primary)) !important;
-      border-radius: 14px !important;
-      border: none !important;
-      box-shadow: 0 0 25px rgba(6, 182, 212, 0.6) !important;
+    /* VR Enter Button Styling */
+    #vr-button-overlay {
+      position: fixed;
+      bottom: 24px;
+      right: 220px;
+      z-index: 100;
+    }
+
+    .vr-btn {
+      padding: 12px 22px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border: none;
+      border-radius: 30px;
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-shadow: 0 0 25px rgba(99, 102, 241, 0.5);
+      transition: transform 0.25s ease, filter 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .vr-btn:hover {
+      transform: scale(1.06);
+      filter: brightness(1.15);
+    }
+
+    /* Floating HTML Product Card Modal */
+    #product-card-container {
+      position: fixed;
+      z-index: 200;
+      width: 320px;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(15px) scale(0.96);
+      transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #product-card-container.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .product-card {
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-glass);
+      border-radius: 20px;
+      padding: 20px;
+      color: #fff;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(99, 102, 241, 0.2);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .product-thumb {
+      width: 70px;
+      height: 70px;
+      border-radius: 12px;
+      background-size: cover;
+      background-position: center;
+      border: 1px solid var(--border-glass);
+      flex-shrink: 0;
+    }
+
+    .brand-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-cyan);
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 2px 0 4px 0;
+      line-height: 1.2;
+    }
+
+    .price-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .price-main {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .discount-badge {
+      background: rgba(236, 72, 153, 0.2);
+      border: 1px solid rgba(236, 72, 153, 0.4);
+      color: var(--secondary);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--accent-gold);
+      margin-bottom: 10px;
+    }
+
+    .stock-tag {
+      margin-left: auto;
+      font-size: 0.72rem;
+      color: var(--accent-green);
+      font-weight: 600;
+    }
+
+    .card-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin-bottom: 14px;
+    }
+
+    .variants-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .size-pills {
+      display: flex;
+      gap: 4px;
+    }
+
+    .size-pill {
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      color: #fff;
+      font-family: monospace;
+      font-size: 0.7rem;
+    }
+
+    /* Smart Gaze Action Buttons */
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+    }
+
+    .card-actions.revealed {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .btn-action {
+      flex: 1;
+      padding: 10px 0;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: transform 0.2s ease, filter 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-action:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+
+    .btn-cart {
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-buy {
+      background: linear-gradient(135deg, var(--accent-green), #059669);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-wish {
+      width: 36px;
+      flex: none;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-glass);
+      color: var(--secondary);
+    }
+
+    /* Toast Notification */
+    #toast-notification {
+      position: fixed;
+      top: 80px;
+      right: 24px;
+      padding: 12px 20px;
+      background: rgba(16, 185, 129, 0.92);
+      backdrop-filter: blur(12px);
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      transform: translateY(-20px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 300;
+      pointer-events: none;
+    }
+
+    #toast-notification.show {
+      transform: translateY(0);
+      opacity: 1;
     }
   </style>
-
-  <script>
-    // Web Audio Synthesizer for Engine Sound & Ring Chimes
-    const ShipAudio = {
-      ctx: null,
-      engineOsc: null,
-      engineGain: null,
-      init() {
-        if (!this.ctx) {
-          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-          
-          // Continuous Engine Hum Oscillator
-          this.engineOsc = this.ctx.createOscillator();
-          this.engineGain = this.ctx.createGain();
-          this.engineOsc.type = 'sawtooth';
-          this.engineOsc.frequency.value = 55; // Deep rumble
-          this.engineGain.gain.value = 0.05; // Low volume engine hum
-          
-          // Lowpass filter to smooth out engine sound
-          const filter = this.ctx.createBiquadFilter();
-          filter.type = 'lowpass';
-          filter.frequency.value = 300;
-
-          this.engineOsc.connect(filter);
-          filter.connect(this.engineGain);
-          this.engineGain.connect(this.ctx.destination);
-          this.engineOsc.start();
-        }
-      },
-      setThrottle(speedRatio) {
-        if (this.ctx && this.engineOsc && this.engineGain) {
-          const targetFreq = 55 + speedRatio * 160;
-          const targetVol = 0.04 + speedRatio * 0.12;
-          this.engineOsc.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.1);
-          this.engineGain.gain.setTargetAtTime(targetVol, this.ctx.currentTime, 0.1);
-        }
-      },
-      playRingPass() {
-        if (!this.ctx) this.init();
-        const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
-        notes.forEach((freq, idx) => {
-          try {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.2, this.ctx.currentTime + idx * 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.05 + 0.3);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start(this.ctx.currentTime + idx * 0.05);
-            osc.stop(this.ctx.currentTime + idx * 0.05 + 0.3);
-          } catch(e) {}
-        });
-      }
-    };
-
-    // Spaceship Pilot Controls Component
-    AFRAME.registerComponent('spaceship-controls', {
-      schema: {
-        speed: { type: 'number', default: 15 },
-        maxSpeed: { type: 'number', default: 60 },
-        minSpeed: { type: 'number', default: 5 },
-        pitchSpeed: { type: 'number', default: 0.6 },
-        yawSpeed: { type: 'number', default: 0.6 },
-        rollSpeed: { type: 'number', default: 0.8 }
-      },
-
-      init: function () {
-        this.currentSpeed = this.data.speed;
-        this.keys = {};
-        this.ringsPassed = 0;
-        this.totalRings = 6;
-
-        // Bind keyboard listeners
-        window.addEventListener('keydown', (e) => {
-          this.keys[e.code] = true;
-          ShipAudio.init();
-        });
-
-        window.addEventListener('keyup', (e) => {
-          this.keys[e.code] = false;
-        });
-
-        // Touch / Click anywhere to start audio engine
-        window.addEventListener('click', () => ShipAudio.init());
-      },
-
-      tick: function (time, delta) {
-        const dt = delta / 1000;
-        if (!dt) return;
-
-        const el = this.el;
-        const rotation = el.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
-        const position = el.getAttribute('position') || { x: 0, y: 0, z: 0 };
-
-        // Throttle Controls
-        if (this.keys['KeyW'] || this.keys['ArrowUp']) {
-          this.currentSpeed = Math.min(this.data.maxSpeed, this.currentSpeed + 25 * dt);
-        } else if (this.keys['KeyS'] || this.keys['ArrowDown']) {
-          this.currentSpeed = Math.max(this.data.minSpeed, this.currentSpeed - 25 * dt);
-        }
-
-        // Boost / Brake
-        if (this.keys['Space']) {
-          this.currentSpeed = Math.min(this.data.maxSpeed * 1.5, this.currentSpeed + 40 * dt);
-        }
-
-        // Flight Steering (Pitch / Yaw / Roll)
-        let pitchDelta = 0;
-        let yawDelta = 0;
-        let rollDelta = 0;
-
-        // Pitch (Nose Up / Down) with I / K
-        if (this.keys['KeyI'] || this.keys['Numpad8']) pitchDelta += 45 * dt;
-        if (this.keys['KeyK'] || this.keys['Numpad2']) pitchDelta -= 45 * dt;
-
-        // Steering (A / D: Yaw + Bank Roll)
-        if (this.keys['KeyA'] || this.keys['ArrowLeft']) {
-          yawDelta += 40 * dt;
-          rollDelta += 30 * dt;
-        }
-        if (this.keys['KeyD'] || this.keys['ArrowRight']) {
-          yawDelta -= 40 * dt;
-          rollDelta -= 30 * dt;
-        }
-
-        // VR Controller Support (Meta Quest 3 Thumbsticks & Rotation)
-        const rightController = document.querySelector('#rightController');
-        if (rightController && rightController.components['tracked-controls']) {
-          const axis = rightController.components['tracked-controls'].axis;
-          if (axis && axis.length >= 2) {
-            yawDelta -= axis[0] * 50 * dt;
-            pitchDelta -= axis[1] * 50 * dt;
-          }
-        }
-
-        // Auto-stabilize roll back to 0
-        rollDelta -= rotation.z * 1.5 * dt;
-
-        // Update Rotation
-        const newPitch = rotation.x + pitchDelta;
-        const newYaw = rotation.y + yawDelta;
-        const newRoll = Math.max(-45, Math.min(45, rotation.z + rollDelta));
-
-        el.setAttribute('rotation', { x: newPitch, y: newYaw, z: newRoll });
-
-        // Calculate Forward Thrust Vector from Rotation
-        const pitchRad = THREE.MathUtils.degToRad(newPitch);
-        const yawRad = THREE.MathUtils.degToRad(newYaw);
-
-        const dx = -Math.sin(yawRad) * Math.cos(pitchRad) * this.currentSpeed * dt;
-        const dy = Math.sin(pitchRad) * this.currentSpeed * dt;
-        const dz = -Math.cos(yawRad) * Math.cos(pitchRad) * this.currentSpeed * dt;
-
-        el.setAttribute('position', {
-          x: position.x + dx,
-          y: position.y + dy,
-          z: position.z + dz
-        });
-
-        // Update Audio Engine Sound
-        ShipAudio.setThrottle(this.currentSpeed / this.data.maxSpeed);
-
-        // Update 2D & 3D HUD Stats
-        this.updateHUD(position, this.currentSpeed);
-
-        // Ring Pass Collision Detection
-        this.checkRingCollisions(position);
-      },
-
-      updateHUD: function (pos, speed) {
-        const speedKm = Math.round(speed * 3.6);
-        const altM = Math.round(pos.y + 100);
-
-        const hudSpeed = document.querySelector('#hud-speed');
-        const hudAlt = document.querySelector('#hud-alt');
-        const hudScore = document.querySelector('#hud-score');
-
-        if (hudSpeed) hudSpeed.textContent = `${speedKm} KM/H`;
-        if (hudAlt) hudAlt.textContent = `${altM} M`;
-        if (hudScore) hudScore.textContent = `${this.ringsPassed} / ${this.totalRings}`;
-
-        // 3D Cockpit HUD Updates
-        const textSpeed = document.querySelector('#cockpit-speed-text');
-        const textAlt = document.querySelector('#cockpit-alt-text');
-        if (textSpeed) textSpeed.setAttribute('value', `SPD: ${speedKm} KM/H`);
-        if (textAlt) textAlt.setAttribute('value', `ALT: ${altM} M`);
-      },
-
-      checkRingCollisions: function (shipPos) {
-        const rings = document.querySelectorAll('.ring-target');
-        rings.forEach((ring) => {
-          if (ring.dataset.passed === 'true') return;
-
-          const ringPos = ring.object3D.position;
-          const dist = shipPos.distanceTo(ringPos);
-
-          if (dist < 6) { // Passed through ring radius!
-            ring.dataset.passed = 'true';
-            ring.setAttribute('material', 'color: #10b981; emissive: #10b981; emissiveIntensity: 1');
-            this.ringsPassed++;
-            ShipAudio.playRingPass();
-
-            // Temporary Speed Boost
-            this.currentSpeed = Math.min(this.data.maxSpeed * 1.4, this.currentSpeed + 15);
-
-            // Ring pass animation
-            ring.setAttribute('animation__pass', 'property: scale; to: 1.5 1.5 1.5; dir: alternate; dur: 300; loop: 1');
-          }
-        });
-      }
-    });
-  </script>
 </head>
 <body>
 
-  <!-- 2D Pilot HUD Overlay -->
-  <div id="pilot-hud">
-    <div class="hud-title">
-      🛸 SPACESHIP PILOT COCKPIT
-      <span style="font-size: 0.7rem; color: #10b981;">● ONLINE</span>
-    </div>
-    
-    <div class="hud-stat-row">
-      <span>AIRSPEED:</span>
-      <span class="hud-value" id="hud-speed">0 KM/H</span>
-    </div>
-    
-    <div class="hud-stat-row">
-      <span>ALTITUDE:</span>
-      <span class="hud-value" id="hud-alt">0 M</span>
-    </div>
+  <!-- WebGL Render Canvas Container -->
+  <div id="webgl-container"></div>
 
-    <div class="hud-stat-row">
-      <span>ENERGY RINGS:</span>
-      <span class="hud-value" id="hud-score">0 / 6</span>
-    </div>
+  <!-- Reticle Crosshair -->
+  <div id="crosshair"></div>
 
-    <div class="controls-help">
-      <strong>FLIGHT CONTROLS:</strong><br>
-      • <kbd class="key-tag">W</kbd> / <kbd class="key-tag">S</kbd> : Throttle Speed Up / Down<br>
-      • <kbd class="key-tag">A</kbd> / <kbd class="key-tag">D</kbd> : Steer Left / Right (Yaw & Roll)<br>
-      • <kbd class="key-tag">I</kbd> / <kbd class="key-tag">K</kbd> : Pitch Nose Up / Down<br>
-      • <kbd class="key-tag">Space</kbd> : Turbo Engine Boost<br>
-      • <strong>Quest 3 VR</strong>: Use Right Touch Thumbstick to steer ship!
+  <!-- Header HUD -->
+  <div id="header-hud" class="hud-element">
+    <div class="brand-logo">A</div>
+    <div>
+      <div class="brand-title">Aetheria Grand Mall</div>
+      <div style="font-size: 0.72rem; color: var(--text-muted);">Next-Gen AR/VR Shopping World</div>
     </div>
   </div>
 
-  <!-- A-Frame VR Scene -->
-  <a-scene 
-    renderer="antialias: true; colorManagement: true; exposure: 1.2;"
-    cursor="rayOrigin: mouse"
-    raycaster="objects: .clickable">
+  <!-- Stats HUD -->
+  <div id="stats-hud" class="hud-element">
+    <div class="hud-badge-btn" id="btn-view-cart">
+      🛒 Cart <span class="badge-count" id="cart-count">0</span>
+    </div>
+    <div class="hud-badge-btn" id="btn-view-wish">
+      ❤️ Wishlist <span class="badge-count wishlist" id="wish-count">0</span>
+    </div>
+    <div id="fps-counter">60 FPS</div>
+  </div>
 
-    <!-- Preloaded Assets -->
-    <a-assets>
-      <a-asset-item id="robot-model" src="https://modelviewer.dev/shared-assets/models/robot.glb"></a-asset-item>
-      <a-asset-item id="helmet-model" src="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DamagedHelmet/glTF-Binary/DamagedHelmet.glb"></a-asset-item>
-      <a-asset-item id="astronaut-model" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"></a-asset-item>
-      
-      <img id="space-grid" src="https://cdn.aframe.io/a-painter/images/floor.jpg" crossorigin="anonymous">
-      <img id="space-sky" src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/city.jpg" crossorigin="anonymous">
-    </a-assets>
+  <!-- Mini Map HUD -->
+  <div id="minimap-container" class="hud-element">
+    <canvas id="minimap-canvas" width="144" height="144"></canvas>
+    <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;">MALL NAVIGATOR</div>
+  </div>
 
-    <!-- Deep Space Skybox -->
-    <a-sky src="#space-sky" rotation="0 -90 0"></a-sky>
+  <!-- Controls HUD -->
+  <div id="controls-hud" class="hud-element">
+    <div><kbd class="key-badge">W A S D</kbd> Walk Mall</div>
+    <div><kbd class="key-badge">Mouse</kbd> Look Around (Click to Lock)</div>
+    <div><kbd class="key-badge">Gaze</kbd> Hold Gaze on Product for Info & Buying</div>
+  </div>
 
-    <!-- Planetary Surface Below -->
-    <a-plane 
-      position="0 -20 0" 
-      rotation="-90 0 0" 
-      width="1000" 
-      height="1000" 
-      src="#space-grid" 
-      repeat="100 100" 
-      material="roughness: 0.5; metalness: 0.7">
-    </a-plane>
+  <!-- VR Enter Button -->
+  <div id="vr-button-overlay">
+    <button class="vr-btn" id="btn-enter-vr">
+      🥽 ENTER VR MODE
+    </button>
+  </div>
 
-    <!-- Ambient & Sun Lights -->
-    <a-light type="ambient" color="#38bdf8" intensity="0.5"></a-light>
-    <a-light type="directional" color="#ec4899" intensity="1.0" position="-10 30 10"></a-light>
+  <!-- Floating Product Card Modal -->
+  <div id="product-card-container">
+    <div class="product-card">
+      <div class="card-header">
+        <div class="product-thumb" id="card-thumb"></div>
+        <div>
+          <div class="brand-tag" id="card-brand">BRAND</div>
+          <div class="card-title" id="card-title">Product Title</div>
+          <div class="price-row">
+            <div class="price-main" id="card-price">₹0</div>
+            <div class="discount-badge" id="card-discount">20% OFF</div>
+          </div>
+        </div>
+      </div>
 
+      <div class="rating-row">
+        <span id="card-rating">★★★★★ 4.9</span>
+        <span class="stock-tag">● In Stock</span>
+      </div>
 
-    <!-- ================= PILOT SPACESHIP RIG ================= -->
-    <!-- The camera and cockpit are parented inside this flying ship rig -->
-    <a-entity id="spaceshipRig" spaceship-controls position="0 5 0">
+      <div class="card-desc" id="card-desc">
+        High quality merchandise tailored for style and comfort.
+      </div>
 
-      <!-- Camera (Pilot's Eye View inside Cockpit) -->
-      <a-entity id="camera" camera position="0 1.2 0" look-controls="pointerLockEnabled: false">
-        
-        <!-- ================= 3D SPACESHIP COCKPIT INTERIOR ================= -->
-        <a-entity id="cockpit" position="0 0 -0.5">
-          <!-- Glass Canopy Canopy Frame Left/Right -->
-          <a-cylinder position="-0.6 0.2 -0.4" rotation="30 20 -40" radius="0.02" height="1.2" material="color: #06b6d4; emissive: #06b6d4; emissiveIntensity: 0.8"></a-cylinder>
-          <a-cylinder position="0.6 0.2 -0.4" rotation="30 -20 40" radius="0.02" height="1.2" material="color: #06b6d4; emissive: #06b6d4; emissiveIntensity: 0.8"></a-cylinder>
-          <a-torus position="0 0.3 -0.6" radius="0.6" radius-tubular="0.015" material="color: #6366f1; emissive: #6366f1; emissiveIntensity: 0.9" arc="180"></a-torus>
+      <div class="variants-row">
+        <span>Sizes:</span>
+        <div class="size-pills" id="card-sizes">
+          <span class="size-pill">S</span>
+          <span class="size-pill">M</span>
+          <span class="size-pill">L</span>
+          <span class="size-pill">XL</span>
+        </div>
+      </div>
 
-          <!-- Pilot Dashboard Console -->
-          <a-box position="0 -0.4 -0.6" width="1.2" height="0.3" depth="0.4" material="color: #090d16; roughness: 0.2; metalness: 0.9"></a-box>
-          <a-box position="0 -0.24 -0.5" width="1.0" height="0.05" depth="0.2" material="color: #1e1b4b; emissive: #6366f1; emissiveIntensity: 0.4"></a-box>
+      <!-- Action Buttons (Revealed after 1.5s Gaze) -->
+      <div class="card-actions" id="card-actions">
+        <button class="btn-action btn-cart" id="btn-add-cart">🛒 Add to Cart</button>
+        <button class="btn-action btn-buy" id="btn-buy-now">⚡ Buy Now</button>
+        <button class="btn-action btn-wish" id="btn-add-wish">❤️</button>
+      </div>
+    </div>
+  </div>
 
-          <!-- Flight Control Joystick Yoke -->
-          <a-cylinder position="0 -0.15 -0.4" rotation="-20 0 0" radius="0.025" height="0.3" material="color: #ec4899; emissive: #ec4899; emissiveIntensity: 0.8"></a-cylinder>
-          <a-sphere position="0 0 -0.35" radius="0.05" material="color: #06b6d4; emissive: #06b6d4; emissiveIntensity: 1"></a-sphere>
-
-          <!-- Floating Holographic Flight Reticle (Crosshair) -->
-          <a-ring position="0 0 -1" radius-inner="0.025" radius-outer="0.03" material="color: #06b6d4; emissive: #06b6d4; emissiveIntensity: 1; shader: flat"></a-ring>
-          <a-circle position="0 0 -1" radius="0.005" material="color: #ec4899; emissive: #ec4899; emissiveIntensity: 1; shader: flat"></a-circle>
-
-          <!-- 3D Cockpit Gauges -->
-          <a-text id="cockpit-speed-text" value="SPD: 54 KM/H" position="-0.4 -0.2 -0.5" scale="0.18 0.18 0.18" color="#06b6d4" font="kelsonsans"></a-text>
-          <a-text id="cockpit-alt-text" value="ALT: 105 M" position="0.1 -0.2 -0.5" scale="0.18 0.18 0.18" color="#ec4899" font="kelsonsans"></a-text>
-        </a-entity>
-
-        <!-- Reticle Cursor -->
-        <a-cursor
-          id="cursor"
-          color="#06b6d4"
-          fuse="false"
-          raycaster="objects: .clickable; far: 40">
-        </a-cursor>
-      </a-entity>
-
-      <!-- Spaceship Body Wings & Thruster Lights (Visible when looking back) -->
-      <a-box position="0 0.5 1.2" width="2.4" height="0.2" depth="1.5" material="color: #0f172a; roughness: 0.2; metalness: 0.8"></a-box>
-      <a-cone position="-1.5 0.5 1.5" rotation="90 0 0" radius-bottom="0.4" radius-top="0.05" height="1.2" material="color: #6366f1; roughness: 0.3"></a-cone>
-      <a-cone position="1.5 0.5 1.5" rotation="90 0 0" radius-bottom="0.4" radius-top="0.05" height="1.2" material="color: #6366f1; roughness: 0.3"></a-cone>
-      
-      <!-- Rear Engine Plasma Glow -->
-      <a-sphere position="-1.5 0.5 2.1" radius="0.25" material="color: #06b6d4; emissive: #06b6d4; emissiveIntensity: 1"></a-sphere>
-      <a-sphere position="1.5 0.5 2.1" radius="0.25" material="color: #ec4899; emissive: #ec4899; emissiveIntensity: 1"></a-sphere>
-      <a-light type="point" position="0 0.5 2.5" color="#06b6d4" intensity="2" distance="8"></a-light>
-
-      <!-- VR Touch Controllers -->
-      <a-entity id="leftController"
-        meta-touch-controls="hand: left"
-        oculus-touch-controls="hand: left"
-        laser-controls="hand: left"
-        raycaster="objects: .clickable; far: 40"
-        line="color: #06b6d4; opacity: 0.9">
-      </a-entity>
-      <a-entity id="rightController"
-        meta-touch-controls="hand: right"
-        oculus-touch-controls="hand: right"
-        laser-controls="hand: right"
-        raycaster="objects: .clickable; far: 40"
-        line="color: #ec4899; opacity: 0.9">
-      </a-entity>
-    </a-entity>
+  <!-- Toast Notification -->
+  <div id="toast-notification">Added to Cart!</div>
 
 
-    <!-- ================= AERIAL SLALOM ENERGY RING COURSE ================= -->
-    <!-- Fly through these glowing rings to score points & speed boost! -->
+  <!-- ================= JAVASCRIPT APPLICATION CODE ================= -->
+  <script>
+    /**
+     * AETHERIA GRAND MALL — SINGLE FILE AR/VR APPLICATION
+     * Built with Three.js (r128), WebXR, Procedural Canvas Textures, Web Audio API, and ES6 Architecture.
+     */
 
-    <a-entity class="ring-target" position="0 8 -30" rotation="0 0 0">
-      <a-torus radius="4" radius-tubular="0.2" material="color: #06b6d4; emissive: #06b6d4; emissiveIntensity: 0.8" animation="property: rotation; to: 0 0 360; loop: true; dur: 8000; easing: linear"></a-torus>
-      <a-text value="RING 1" position="0 5 0" align="center" color="#06b6d4" width="6" font="kelsonsans"></a-text>
-    </a-entity>
+    // ================= 1. PROCEDURAL TEXTURE GENERATOR =================
+    class TextureGenerator {
+      static createMarbleTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
 
-    <a-entity class="ring-target" position="-15 14 -70" rotation="0 15 0">
-      <a-torus radius="4" radius-tubular="0.2" material="color: #6366f1; emissive: #6366f1; emissiveIntensity: 0.8" animation="property: rotation; to: 0 0 -360; loop: true; dur: 8000; easing: linear"></a-torus>
-      <a-text value="RING 2" position="0 5 0" align="center" color="#6366f1" width="6" font="kelsonsans"></a-text>
-    </a-entity>
+        // Polished marble tiles background
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, 512, 512);
 
-    <a-entity class="ring-target" position="-30 22 -120" rotation="10 30 0">
-      <a-torus radius="4.5" radius-tubular="0.2" material="color: #ec4899; emissive: #ec4899; emissiveIntensity: 0.8" animation="property: rotation; to: 0 0 360; loop: true; dur: 6000; easing: linear"></a-torus>
-      <a-text value="RING 3" position="0 5.5 0" align="center" color="#ec4899" width="6" font="kelsonsans"></a-text>
-    </a-entity>
+        // Tile grid pattern
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.2)';
+        ctx.lineWidth = 4;
+        const tileSize = 128;
+        for (let x = 0; x <= 512; x += tileSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, 512);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= 512; y += tileSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(512, y);
+          ctx.stroke();
+        }
 
-    <a-entity class="ring-target" position="0 30 -170" rotation="15 0 0">
-      <a-torus radius="5" radius-tubular="0.25" material="color: #10b981; emissive: #10b981; emissiveIntensity: 0.9" animation="property: rotation; to: 0 0 -360; loop: true; dur: 7000; easing: linear"></a-torus>
-      <a-text value="RING 4" position="0 6 0" align="center" color="#10b981" width="6" font="kelsonsans"></a-text>
-    </a-entity>
+        // Vein pattern details
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+          ctx.beginPath();
+          ctx.moveTo(Math.random() * 512, 0);
+          ctx.bezierCurveTo(Math.random() * 512, 170, Math.random() * 512, 340, Math.random() * 512, 512);
+          ctx.stroke();
+        }
 
-    <a-entity class="ring-target" position="35 25 -220" rotation="0 -30 0">
-      <a-torus radius="5" radius-tubular="0.25" material="color: #f59e0b; emissive: #f59e0b; emissiveIntensity: 0.9" animation="property: rotation; to: 0 0 360; loop: true; dur: 8000; easing: linear"></a-torus>
-      <a-text value="RING 5" position="0 6 0" align="center" color="#f59e0b" width="6" font="kelsonsans"></a-text>
-    </a-entity>
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        return texture;
+      }
 
-    <a-entity class="ring-target" position="50 15 -270" rotation="-10 -40 0">
-      <a-torus radius="5.5" radius-tubular="0.25" material="color: #a855f7; emissive: #a855f7; emissiveIntensity: 0.9" animation="property: rotation; to: 0 0 -360; loop: true; dur: 6000; easing: linear"></a-torus>
-      <a-text value="RING 6" position="0 6.5 0" align="center" color="#a855f7" width="6" font="kelsonsans"></a-text>
-    </a-entity>
+      static createWoodTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#1e1b4b';
+        ctx.fillRect(0, 0, 512, 512);
+
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.08)';
+        for (let y = 0; y < 512; y += 16) {
+          ctx.fillRect(0, y, 512, 8);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        return texture;
+      }
+
+      static createStoreSignTexture(title, category, color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(0, 0, 512, 128);
+
+        // Neon border
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 6;
+        ctx.strokeRect(4, 4, 504, 120);
+
+        // Store Title
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(title.toUpperCase(), 256, 62);
+
+        // Category Subtitle
+        ctx.fillStyle = color;
+        ctx.font = '600 18px sans-serif';
+        ctx.fillText(category.toUpperCase(), 256, 96);
+
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      static createProductTexture(name, colorHex) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = colorHex;
+        ctx.fillRect(0, 0, 256, 256);
+
+        // Fabric / Material Texture overlay
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        for (let i = 0; i < 256; i += 8) {
+          ctx.fillRect(i, 0, 4, 256);
+        }
+
+        // Branding logo mark
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(name.substring(0, 8), 128, 136);
+
+        return new THREE.CanvasTexture(canvas);
+      }
+    }
 
 
-    <!-- ================= FLOATING ASTEROIDS & SPACE OBJECTS ================= -->
+    // ================= 2. WEB AUDIO SYSTEM =================
+    class AudioSystem {
+      constructor() {
+        this.ctx = null;
+      }
 
-    <!-- Floating Space Station Landmark -->
-    <a-entity position="0 50 -350">
-      <a-torus radius="25" radius-tubular="1.5" material="color: #6366f1; emissive: #6366f1; emissiveIntensity: 0.5; roughness: 0.2" animation="property: rotation; to: 360 360 0; loop: true; dur: 30000; easing: linear"></a-torus>
-      <a-sphere radius="8" material="color: #06b6d4; emissive: #06b6d4; emissiveIntensity: 0.6; roughness: 0.1"></a-sphere>
-      <a-light type="point" color="#06b6d4" intensity="4" distance="60"></a-light>
-      <a-text value="GALACTIC SPACE STATION" position="0 14 0" align="center" color="#38bdf8" width="15" font="kelsonsans"></a-text>
-    </a-entity>
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      }
 
-    <!-- Floating Asteroids -->
-    <a-dodecahedron position="-40 20 -100" radius="6" material="color: #334155; roughness: 0.9" animation="property: rotation; to: 360 180 360; loop: true; dur: 25000; easing: linear"></a-dodecahedron>
-    <a-dodecahedron position="45 35 -150" radius="8" material="color: #1e293b; roughness: 0.8" animation="property: rotation; to: -360 360 -180; loop: true; dur: 35000; easing: linear"></a-dodecahedron>
-    <a-dodecahedron position="-60 45 -250" radius="12" material="color: #334155; roughness: 0.9" animation="property: rotation; to: 180 360 180; loop: true; dur: 40000; easing: linear"></a-dodecahedron>
+      playTone(freq, type = 'sine', duration = 0.3, vol = 0.15) {
+        try {
+          this.init();
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {}
+      }
+
+      playHover() {
+        this.playTone(880, 'sine', 0.15, 0.08);
+      }
+
+      playAction() {
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          setTimeout(() => this.playTone(freq, 'sine', 0.3, 0.12), idx * 60);
+        });
+      }
+
+      playFootstep() {
+        this.playTone(120 + Math.random() * 30, 'triangle', 0.08, 0.04);
+      }
+    }
 
 
-    <!-- ================= INTERACTIVE 3D EXHIBIT MODELS ================= -->
+    // ================= 3. SHOPPING MALL WORLD =================
+    class MallWorld {
+      constructor(scene) {
+        this.scene = scene;
+        this.colliders = [];
+        this.escalatorSteps = [];
 
-    <!-- Damaged Relic Helmet floating in Space Station Sector -->
-    <a-entity position="-12 10 -40" rotation="0 45 0" class="clickable">
-      <a-gltf-model src="#helmet-model" scale="2 2 2" animation="property: rotation; to: 0 360 0; loop: true; dur: 15000; easing: linear"></a-gltf-model>
-      <a-light type="point" color="#06b6d4" intensity="2" distance="10"></a-light>
-    </a-entity>
+        this.textures = {
+          marble: TextureGenerator.createMarbleTexture(),
+          wood: TextureGenerator.createWoodTexture()
+        };
 
-    <!-- Astronaut Floating in Deep Space -->
-    <a-entity position="15 15 -50" rotation="0 -45 0" class="clickable">
-      <a-gltf-model src="#astronaut-model" scale="1.5 1.5 1.5" animation__float="property: position; dir: alternate; to: 15 18 -50; loop: true; dur: 3000; easing: easeInOutQuad"></a-gltf-model>
-      <a-light type="point" color="#ec4899" intensity="2" distance="10"></a-light>
-    </a-entity>
+        this.buildMallStructure();
+        this.buildStores();
+        this.buildEscalators();
+        this.buildDecorationPlants();
+        this.buildCeilingLighting();
+      }
 
-  </a-scene>
+      buildMallStructure() {
+        // Reflective Main Atrium Floor (60m x 80m)
+        this.textures.marble.repeat.set(15, 20);
+        const floorMat = new THREE.MeshStandardMaterial({
+          map: this.textures.marble,
+          roughness: 0.15,
+          metalness: 0.85
+        });
+        const floorGeo = new THREE.PlaneGeometry(60, 80);
+        const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+        floorMesh.rotation.x = -Math.PI / 2;
+        floorMesh.receiveShadow = true;
+        this.scene.add(floorMesh);
 
+        // Mezzanine Level Floor (2nd Floor)
+        const mezzGeo = new THREE.PlaneGeometry(60, 80);
+        const mezzMesh = new THREE.Mesh(mezzGeo, floorMat);
+        mezzMesh.rotation.x = -Math.PI / 2;
+        mezzMesh.position.y = 8;
+        this.scene.add(mezzMesh);
+
+        // Glass Ceiling Skylight
+        const skyGeo = new THREE.PlaneGeometry(60, 80);
+        const skyMat = new THREE.MeshPhysicalMaterial({
+          color: 0x38bdf8,
+          transparent: true,
+          opacity: 0.4,
+          roughness: 0.05,
+          transmission: 0.9,
+          ior: 1.5
+        });
+        const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+        skyMesh.rotation.x = Math.PI / 2;
+        skyMesh.position.y = 16;
+        this.scene.add(skyMesh);
+
+        // Exterior Glass Walls & Perimeter Colliders
+        const wallMat = new THREE.MeshPhysicalMaterial({
+          color: 0x0f172a,
+          roughness: 0.2,
+          metalness: 0.8,
+          transparent: true,
+          opacity: 0.85
+        });
+
+        // Back Wall
+        const backWall = new THREE.Mesh(new THREE.BoxGeometry(60, 16, 1), wallMat);
+        backWall.position.set(0, 8, -40);
+        this.scene.add(backWall);
+        this.colliders.push(backWall);
+
+        // Front Wall
+        const frontWall = new THREE.Mesh(new THREE.BoxGeometry(60, 16, 1), wallMat);
+        frontWall.position.set(0, 8, 40);
+        this.scene.add(frontWall);
+        this.colliders.push(frontWall);
+
+        // Left Wall
+        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 16, 80), wallMat);
+        leftWall.position.set(-30, 8, 0);
+        this.scene.add(leftWall);
+        this.colliders.push(leftWall);
+
+        // Right Wall
+        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(1, 16, 80), wallMat);
+        rightWall.position.set(30, 8, 0);
+        this.scene.add(rightWall);
+        this.colliders.push(rightWall);
+      }
+
+      buildStores() {
+        // Store Definitions
+        this.stores = [
+          { name: "Urban Apparel", category: "Shirts & Hoodies", color: "#6366f1", x: -18, z: -20 },
+          { name: "Luxe Leather", category: "Jackets & Trench", color: "#ec4899", x: 18, z: -20 },
+          { name: "Kicks & Soles", category: "Footwear & Shoes", color: "#06b6d4", x: -18, z: 0 },
+          { name: "Vanguard Leather", category: "Bags & Backpacks", color: "#10b981", x: 18, z: 0 },
+          { name: "Chrono Luxe", category: "Timepieces & Watches", color: "#f59e0b", x: -18, z: 20 },
+          { name: "Accessories Co", category: "Belts & Sunglasses", color: "#a855f7", x: 18, z: 20 }
+        ];
+
+        this.stores.forEach(store => {
+          // Store Divider Walls
+          const storeWallMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.3, metalness: 0.7 });
+          const storeBox = new THREE.Mesh(new THREE.BoxGeometry(20, 7, 16), storeWallMat);
+          storeBox.position.set(store.x, 3.5, store.z);
+          this.scene.add(storeBox);
+          this.colliders.push(storeBox);
+
+          // Store Entrance Sign Banner
+          const signTex = TextureGenerator.createStoreSignTexture(store.name, store.category, store.color);
+          const signMat = new THREE.MeshBasicMaterial({ map: signTex });
+          const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(12, 3), signMat);
+          signMesh.position.set(store.x, 6, store.z + (store.x < 0 ? 8.1 : -8.1));
+          if (store.x < 0) signMesh.rotation.y = Math.PI;
+          this.scene.add(signMesh);
+
+          // Store Glass Windows
+          const glassMat = new THREE.MeshPhysicalMaterial({
+            color: 0x38bdf8,
+            transparent: true,
+            opacity: 0.3,
+            transmission: 0.9,
+            roughness: 0.05
+          });
+          const glassWindow = new THREE.Mesh(new THREE.PlaneGeometry(16, 5), glassMat);
+          glassWindow.position.set(store.x, 2.5, store.z + (store.x < 0 ? 8.05 : -8.05));
+          if (store.x < 0) glassWindow.rotation.y = Math.PI;
+          this.scene.add(glassWindow);
+        });
+      }
+
+      buildEscalators() {
+        // Central Escalator Ramp
+        const escGeo = new THREE.BoxGeometry(4, 0.4, 16);
+        const escMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 });
+        const escRamp = new THREE.Mesh(escGeo, escMat);
+        escRamp.position.set(0, 4, -5);
+        escRamp.rotation.x = Math.PI / 6;
+        this.scene.add(escRamp);
+
+        // Animated Escalator Step Lines
+        for (let i = 0; i < 8; i++) {
+          const stepGeo = new THREE.BoxGeometry(3.6, 0.1, 0.6);
+          const stepMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x06b6d4, emissiveIntensity: 0.6 });
+          const step = new THREE.Mesh(stepGeo, stepMat);
+          step.position.set(0, 1 + i * 0.9, 2 - i * 1.6);
+          this.scene.add(step);
+          this.escalatorSteps.push(step);
+        }
+      }
+
+      buildDecorationPlants() {
+        // Decorative Plant Pots
+        const potGeo = new THREE.CylinderGeometry(0.8, 0.6, 1.4, 16);
+        const potMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.3 });
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.6 });
+
+        const plantPositions = [
+          [-8, 0.7, -10], [8, 0.7, -10],
+          [-8, 0.7, 10],  [8, 0.7, 10],
+          [0, 0.7, -25],  [0, 0.7, 25]
+        ];
+
+        plantPositions.forEach(pos => {
+          const pot = new THREE.Mesh(potGeo, potMat);
+          pot.position.set(pos[0], pos[1], pos[2]);
+          this.scene.add(pot);
+
+          // Foliage Sphere
+          const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(1.2), leafMat);
+          bush.position.set(pos[0], pos[1] + 1.2, pos[2]);
+          this.scene.add(bush);
+        });
+      }
+
+      buildCeilingLighting() {
+        // Ambient Light
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        this.scene.add(ambientLight);
+
+        // Main Atrium Directional Sunlight
+        const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        sunLight.position.set(20, 40, 20);
+        sunLight.castShadow = true;
+        this.scene.add(sunLight);
+
+        // Store Accent Spotlights
+        const colors = [0x6366f1, 0xec4899, 0x06b6d4, 0x10b981, 0xf59e0b, 0xa855f7];
+        this.stores.forEach((store, i) => {
+          const spot = new THREE.PointLight(colors[i % colors.length], 2, 20);
+          spot.position.set(store.x, 6, store.z);
+          this.scene.add(spot);
+        });
+      }
+
+      update(time) {
+        // Animate Escalator Steps
+        this.escalatorSteps.forEach((step, idx) => {
+          step.position.y += 0.02;
+          step.position.z -= 0.035;
+          if (step.position.y > 7.5) {
+            step.position.y = 1;
+            step.position.z = 2;
+          }
+        });
+      }
+    }
+
+
+    // ================= 4. PRODUCT MANAGER & SMART GAZE =================
+    class ProductManager {
+      constructor(scene, camera, audioSystem) {
+        this.scene = scene;
+        this.camera = camera;
+        this.audioSystem = audioSystem;
+        this.products = [];
+        this.currentGazedProduct = null;
+        this.gazeTimer = 0;
+        this.gazeState = 'NONE'; // NONE, HIGHLIGHTED, REVEALED
+
+        this.raycaster = new THREE.Raycaster();
+        this.raycaster.far = 15;
+
+        this.buildProducts();
+      }
+
+      buildProducts() {
+        const productList = [
+          // Store 1: Urban Apparel
+          { name: "Nike Air Max Hoodie", price: "₹2,499", discount: "20% OFF", rating: "★★★★★ 4.8", sizes: ["S", "M", "L", "XL"], brand: "NIKE", desc: "Premium cotton blend streetwear hoodie.", category: "Hoodie", color: "#6366f1", x: -16, y: 1.5, z: -15 },
+          { name: "Adidas Trefoil T-Shirt", price: "₹1,299", discount: "15% OFF", rating: "★★★★☆ 4.6", sizes: ["M", "L", "XL"], brand: "ADIDAS", desc: "Classic graphic oversized cotton tee.", category: "T-Shirt", color: "#38bdf8", x: -20, y: 1.5, z: -15 },
+          
+          // Store 2: Luxe Leather
+          { name: "Cyberpunk Biker Jacket", price: "₹5,999", discount: "30% OFF", rating: "★★★★★ 4.9", sizes: ["M", "L"], brand: "VALENTINO", desc: "Genuine lambskin leather jacket with neon trim.", category: "Jacket", color: "#ec4899", x: 16, y: 1.5, z: -15 },
+          { name: "Urban Denim Trench", price: "₹3,499", discount: "10% OFF", rating: "★★★★☆ 4.5", sizes: ["S", "M", "L"], brand: "LEVI'S", desc: "Heavyweight washed denim trench coat.", category: "Jacket", color: "#1e40af", x: 20, y: 1.5, z: -15 },
+
+          // Store 3: Kicks & Soles
+          { name: "Puma RS-X Tech Sneaker", price: "₹4,199", discount: "25% OFF", rating: "★★★★★ 4.9", sizes: ["8", "9", "10", "11"], brand: "PUMA", desc: "Futuristic mesh sneakers with soft foam cushioning.", category: "Shoes", color: "#06b6d4", x: -16, y: 1.2, z: 5 },
+          { name: "Jordan Retro High OG", price: "₹8,999", discount: "5% OFF", rating: "★★★★★ 5.0", sizes: ["9", "10", "11"], brand: "JORDAN", desc: "Iconic high-top basketball sneaker.", category: "Shoes", color: "#ef4444", x: -20, y: 1.2, z: 5 },
+
+          // Store 4: Vanguard Bags
+          { name: "Gucci Leather Backpack", price: "₹12,499", discount: "15% OFF", rating: "★★★★★ 4.9", sizes: ["ONE SIZE"], brand: "GUCCI", desc: "Handcrafted Italian leather luxury travel backpack.", category: "Bag", color: "#10b981", x: 16, y: 1.4, z: 5 },
+
+          // Store 5: Chrono Luxe
+          { name: "Rolex Submariner Gold", price: "₹45,999", discount: "5% OFF", rating: "★★★★★ 5.0", sizes: ["41mm"], brand: "ROLEX", desc: "Luxury automatic chronograph watch.", category: "Watch", color: "#f59e0b", x: -16, y: 1.4, z: 25 },
+
+          // Store 6: Accessories
+          { name: "Ray-Ban Aviator Sunglasses", price: "₹3,199", discount: "20% OFF", rating: "★★★★☆ 4.7", sizes: ["MEDIUM"], brand: "RAY-BAN", desc: "Classic polarized gold-frame sunglasses.", category: "Accessory", color: "#a855f7", x: 16, y: 1.4, z: 25 }
+        ];
+
+        productList.forEach((item, index) => {
+          const tex = TextureGenerator.createProductTexture(item.name, item.color);
+          const mat = new THREE.MeshStandardMaterial({
+            map: tex,
+            roughness: 0.2,
+            metalness: 0.8
+          });
+
+          // Product Mesh Geometry based on category
+          let geo = new THREE.BoxGeometry(0.8, 1.2, 0.3);
+          if (item.category === "Shoes") geo = new THREE.BoxGeometry(1.0, 0.5, 0.6);
+          if (item.category === "Watch") geo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
+          if (item.category === "Bag") geo = new THREE.BoxGeometry(0.9, 1.1, 0.5);
+
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.position.set(item.x, item.y, item.z);
+          mesh.castShadow = true;
+          mesh.userData = { ...item, id: index };
+
+          // Display Pedestal
+          const pedestal = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.7, 0.7, 0.8, 16),
+            new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.3, metalness: 0.7 })
+          );
+          pedestal.position.set(item.x, item.y - 0.7, item.z);
+          this.scene.add(pedestal);
+
+          this.scene.add(mesh);
+          this.products.push(mesh);
+        });
+      }
+
+      update(dt) {
+        // Rotate products gently
+        this.products.forEach(p => {
+          p.rotation.y += 0.01;
+        });
+
+        // Cast Ray from camera center (screen middle)
+        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+        const intersects = this.raycaster.intersectObjects(this.products);
+
+        const crosshair = document.getElementById('crosshair');
+        const cardContainer = document.getElementById('product-card-container');
+        const cardActions = document.getElementById('card-actions');
+
+        if (intersects.length > 0) {
+          const target = intersects[0].object;
+          crosshair.classList.add('active');
+
+          if (this.currentGazedProduct !== target) {
+            this.currentGazedProduct = target;
+            this.gazeTimer = 0;
+            this.gazeState = 'NONE';
+            this.audioSystem.playHover();
+          }
+
+          this.gazeTimer += dt;
+
+          // Smart Gaze Timeline
+          if (this.gazeTimer >= 0.5 && this.gazeState === 'NONE') {
+            this.gazeState = 'HIGHLIGHTED';
+            this.showProductCard(target.userData);
+          }
+
+          if (this.gazeTimer >= 1.5 && this.gazeState === 'HIGHLIGHTED') {
+            this.gazeState = 'REVEALED';
+            cardActions.classList.add('revealed');
+          }
+
+        } else {
+          crosshair.classList.remove('active');
+          if (this.currentGazedProduct) {
+            this.currentGazedProduct = null;
+            this.gazeTimer = 0;
+            this.gazeState = 'NONE';
+            cardContainer.classList.remove('visible');
+            cardActions.classList.remove('revealed');
+          }
+        }
+      }
+
+      showProductCard(data) {
+        const cardContainer = document.getElementById('product-card-container');
+        document.getElementById('card-brand').textContent = data.brand;
+        document.getElementById('card-title').textContent = data.name;
+        document.getElementById('card-price').textContent = data.price;
+        document.getElementById('card-discount').textContent = data.discount;
+        document.getElementById('card-rating').textContent = data.rating;
+        document.getElementById('card-desc').textContent = data.desc;
+
+        // Position Card beside screen center
+        cardContainer.style.top = '30%';
+        cardContainer.style.left = 'calc(50% + 40px)';
+        cardContainer.classList.add('visible');
+      }
+    }
+
+
+    // ================= 5. NPC SHOPPERS MANAGER =================
+    class NPCManager {
+      constructor(scene) {
+        this.scene = scene;
+        this.npcs = [];
+        this.buildNPCs();
+      }
+
+      buildNPCs() {
+        const colors = [0x6366f1, 0xec4899, 0x06b6d4, 0x10b981];
+        for (let i = 0; i < 5; i++) {
+          const group = new THREE.Group();
+
+          // Torso
+          const bodyMat = new THREE.MeshStandardMaterial({ color: colors[i % colors.length] });
+          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8), bodyMat);
+          body.position.y = 1.0;
+          group.add(body);
+
+          // Head
+          const headMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), headMat);
+          head.position.y = 1.8;
+          group.add(head);
+
+          group.position.set((Math.random() - 0.5) * 40, 0, (Math.random() - 0.5) * 40);
+          group.userData = {
+            target: new THREE.Vector3((Math.random() - 0.5) * 40, 0, (Math.random() - 0.5) * 40),
+            speed: 1.5 + Math.random() * 1.0
+          };
+
+          this.scene.add(group);
+          this.npcs.push(group);
+        }
+      }
+
+      update(dt) {
+        this.npcs.forEach(npc => {
+          const pos = npc.position;
+          const target = npc.userData.target;
+          const dist = pos.distanceTo(target);
+
+          if (dist < 1.0) {
+            npc.userData.target.set((Math.random() - 0.5) * 40, 0, (Math.random() - 0.5) * 40);
+          } else {
+            const dir = new THREE.Vector3().subVectors(target, pos).normalize();
+            npc.position.addScaledVector(dir, npc.userData.speed * dt);
+            npc.lookAt(target.x, pos.y, target.z);
+          }
+        });
+      }
+    }
+
+
+    // ================= 6. PLAYER FIRST-PERSON CONTROLS =================
+    class PlayerControls {
+      constructor(camera, domElement) {
+        this.camera = camera;
+        this.domElement = domElement;
+        this.moveForward = false;
+        this.moveBackward = false;
+        this.moveLeft = false;
+        this.moveRight = false;
+        this.velocity = new THREE.Vector3();
+        this.direction = new THREE.Vector3();
+        this.isLocked = false;
+
+        this.pitch = 0;
+        this.yaw = 0;
+
+        this.initListeners();
+      }
+
+      initListeners() {
+        document.addEventListener('click', () => {
+          if (!this.isLocked) {
+            this.domElement.requestPointerLock();
+          }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+          this.isLocked = document.pointerLockElement === this.domElement;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+          if (!this.isLocked) return;
+          this.yaw -= e.movementX * 0.002;
+          this.pitch -= e.movementY * 0.002;
+          this.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
+
+          this.camera.rotation.set(0, 0, 0);
+          this.camera.rotation.y = this.yaw;
+          this.camera.rotation.x = this.pitch;
+        });
+
+        document.addEventListener('keydown', (e) => {
+          if (e.code === 'KeyW') this.moveForward = true;
+          if (e.code === 'KeyS') this.moveBackward = true;
+          if (e.code === 'KeyA') this.moveLeft = true;
+          if (e.code === 'KeyD') this.moveRight = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+          if (e.code === 'KeyW') this.moveForward = false;
+          if (e.code === 'KeyS') this.moveBackward = false;
+          if (e.code === 'KeyA') this.moveLeft = false;
+          if (e.code === 'KeyD') this.moveRight = false;
+        });
+      }
+
+      update(dt) {
+        this.velocity.x -= this.velocity.x * 10.0 * dt;
+        this.velocity.z -= this.velocity.z * 10.0 * dt;
+
+        this.direction.z = Number(this.moveForward) - Number(this.moveBackward);
+        this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
+        this.direction.normalize();
+
+        if (this.moveForward || this.moveBackward) this.velocity.z -= this.direction.z * 40.0 * dt;
+        if (this.moveLeft || this.moveRight) this.velocity.x -= this.direction.x * 40.0 * dt;
+
+        this.camera.translateX(-this.velocity.x * dt);
+        this.camera.translateZ(this.velocity.z * dt);
+        this.camera.position.y = 1.7; // Keep camera height constant
+      }
+    }
+
+
+    // ================= 7. MAIN APPLICATION CONTROLLER =================
+    class MallApp {
+      constructor() {
+        this.container = document.getElementById('webgl-container');
+        this.cartCount = 0;
+        this.wishCount = 0;
+
+        this.initScene();
+        this.initAudio();
+        this.initWorld();
+        this.initControls();
+        this.initUI();
+        this.animate();
+      }
+
+      initScene() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x030712);
+
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.camera.position.set(0, 1.7, 30);
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.container.appendChild(this.renderer.domElement);
+
+        window.addEventListener('resize', () => this.onWindowResize());
+      }
+
+      initAudio() {
+        this.audioSystem = new AudioSystem();
+      }
+
+      initWorld() {
+        this.world = new MallWorld(this.scene);
+        this.productManager = new ProductManager(this.scene, this.camera, this.audioSystem);
+        this.npcManager = new NPCManager(this.scene);
+      }
+
+      initControls() {
+        this.controls = new PlayerControls(this.camera, this.renderer.domElement);
+      }
+
+      initUI() {
+        // Add to Cart Button Listener
+        document.getElementById('btn-add-cart').addEventListener('click', () => {
+          this.cartCount++;
+          document.getElementById('cart-count').textContent = this.cartCount;
+          this.audioSystem.playAction();
+          this.showToast("Item Added to Shopping Cart! 🛒");
+        });
+
+        // Buy Now Button Listener
+        document.getElementById('btn-buy-now').addEventListener('click', () => {
+          this.audioSystem.playAction();
+          this.showToast("⚡ Order Confirmed! Thank you!");
+        });
+
+        // Wishlist Button Listener
+        document.getElementById('btn-add-wish').addEventListener('click', () => {
+          this.wishCount++;
+          document.getElementById('wish-count').textContent = this.wishCount;
+          this.audioSystem.playAction();
+          this.showToast("Saved to Wishlist! ❤️");
+        });
+
+        // Mini Map Setup
+        this.minimapCanvas = document.getElementById('minimap-canvas');
+        this.minimapCtx = this.minimapCanvas.getContext('2d');
+      }
+
+      showToast(msg) {
+        const toast = document.getElementById('toast-notification');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+      }
+
+      drawMinimap() {
+        const ctx = this.minimapCtx;
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(0, 0, 144, 144);
+
+        // Center offset (Mall 60x80 mapped to 144x144)
+        const scaleX = 144 / 60;
+        const scaleZ = 144 / 80;
+
+        // Player Dot
+        const px = (this.camera.position.x + 30) * scaleX;
+        const pz = (this.camera.position.z + 40) * scaleZ;
+
+        ctx.fillStyle = '#6366f1';
+        ctx.beginPath();
+        ctx.arc(px, pz, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // NPCs Dots
+        ctx.fillStyle = '#ec4899';
+        this.npcManager.npcs.forEach(npc => {
+          const nx = (npc.position.x + 30) * scaleX;
+          const nz = (npc.position.z + 40) * scaleZ;
+          ctx.beginPath();
+          ctx.arc(nx, nz, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      onWindowResize() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      animate() {
+        requestAnimationFrame(() => this.animate());
+
+        const dt = 0.016; // 60 FPS delta approximation
+        this.controls.update(dt);
+        this.world.update(dt);
+        this.productManager.update(dt);
+        this.npcManager.update(dt);
+        this.drawMinimap();
+
+        this.renderer.render(this.scene, this.camera);
+      }
+    }
+
+    // Launch Application when DOM Ready
+    window.addEventListener('DOMContentLoaded', () => {
+      new MallApp();
+    });
+  </script>
 </body>
 </html>
