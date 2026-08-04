@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Aetheria — Interactive VR World | Meta Quest 3</title>
-  <meta name="description" content="Aetheria VR World — Interactive WebXR 3D Showcase for Meta Quest 3 and Desktop.">
+  <title>Aetheria VR — Interactive 3D World | Meta Quest 3</title>
+  <meta name="description" content="Aetheria VR — High-fidelity WebVR exploration world for Meta Quest 3 and Desktop.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-  <!-- A-Frame 1.7.1 & Addons -->
+  <!-- A-Frame 1.7.1 & A-Frame Extras -->
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
-  <script src="https://unpkg.com/aframe-environment-component@1.3.4/dist/aframe-environment-component.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
 
   <style>
@@ -21,79 +20,72 @@
     body {
       margin: 0;
       overflow: hidden;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
       background: #030712;
       user-select: none;
     }
 
-    /* Modern Glass UI Header Card */
-    #ui-hud {
+    /* Minimal HUD Overlay */
+    #hud {
       position: absolute;
       top: 20px;
       left: 20px;
       z-index: 999;
-      background: rgba(10, 15, 30, 0.85);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 16px;
-      padding: 16px 20px;
+      border-radius: 14px;
+      padding: 14px 18px;
       color: #fff;
-      max-width: 320px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      max-width: 300px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
 
-    .ui-title {
+    .hud-title {
       font-size: 1.1rem;
       font-weight: 800;
       background: linear-gradient(135deg, var(--primary), var(--secondary));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
-    .ui-info {
-      font-size: 0.8rem;
+    .hud-text {
+      font-size: 0.78rem;
       color: #94a3b8;
-      line-height: 1.4;
+      line-height: 1.45;
     }
 
-    .ui-badge {
+    .hud-badge {
       display: inline-block;
-      margin-top: 10px;
-      padding: 3px 10px;
+      margin-top: 8px;
+      padding: 2px 8px;
       background: rgba(99, 102, 241, 0.2);
       border: 1px solid rgba(99, 102, 241, 0.4);
-      border-radius: 20px;
-      font-size: 0.72rem;
+      border-radius: 12px;
+      font-size: 0.7rem;
       color: #818cf8;
       font-weight: 600;
     }
 
-    /* VR Button Styling */
+    /* VR Button */
     .a-enter-vr-button {
       background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
       border-radius: 12px !important;
       border: none !important;
-      box-shadow: 0 0 20px rgba(99, 102, 241, 0.6) !important;
-      transition: all 0.3s ease !important;
-    }
-
-    .a-enter-vr-button:hover {
-      transform: scale(1.05) !important;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.5) !important;
     }
   </style>
 
   <script>
-    // Web Audio Synthesizer for SFX
-    const AudioEngine = {
+    // Web Audio Synthesizer
+    const AudioSFX = {
       ctx: null,
       init() {
-        if (!this.ctx) {
-          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        }
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       },
-      playTone(freq, type = 'sine', duration = 0.4) {
+      play(freq, type = 'sine', duration = 0.3) {
         try {
           this.init();
           const osc = this.ctx.createOscillator();
@@ -106,128 +98,70 @@
           gain.connect(this.ctx.destination);
           osc.start();
           osc.stop(this.ctx.currentTime + duration);
-        } catch (e) {}
+        } catch(e) {}
       },
-      playChime() {
-        [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
-          setTimeout(() => this.playTone(f, 'sine', 0.4), i * 70);
-        });
-      },
-      playWobble() {
-        this.playTone(220, 'sawtooth', 0.3);
-        setTimeout(() => this.playTone(440, 'sine', 0.4), 200);
+      chime() {
+        [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.play(f, 'sine', 0.35), i * 70));
       }
     };
 
-    // Hover Scale & Audio Feedback
-    AFRAME.registerComponent('hover-effect', {
+    // Hover scale component
+    AFRAME.registerComponent('hover-grow', {
       init: function () {
         const el = this.el;
-        const origScale = el.getAttribute('scale') || { x: 1, y: 1, z: 1 };
-
+        const s = el.getAttribute('scale') || { x: 1, y: 1, z: 1 };
         el.addEventListener('mouseenter', () => {
-          el.setAttribute('animation__hover', {
-            property: 'scale',
-            to: `${origScale.x * 1.1} ${origScale.y * 1.1} ${origScale.z * 1.1}`,
-            dur: 200,
-            easing: 'easeOutCubic'
-          });
-          AudioEngine.playTone(880, 'sine', 0.15);
+          el.setAttribute('animation__hover', `property: scale; to: ${s.x * 1.1} ${s.y * 1.1} ${s.z * 1.1}; dur: 200; easing: easeOutQuad`);
+          AudioSFX.play(880, 'sine', 0.15);
         });
-
         el.addEventListener('mouseleave', () => {
-          el.setAttribute('animation__hover', {
-            property: 'scale',
-            to: `${origScale.x} ${origScale.y} ${origScale.z}`,
-            dur: 200,
-            easing: 'easeOutCubic'
-          });
+          el.setAttribute('animation__hover', `property: scale; to: ${s.x} ${s.y} ${s.z}; dur: 200; easing: easeOutQuad`);
         });
       }
     });
 
-    // Interactive Crystal Core (Color Switcher)
-    AFRAME.registerComponent('crystal-interact', {
+    // Interactive Crystal Color Cycler
+    AFRAME.registerComponent('crystal-toggle', {
       init: function () {
         const el = this.el;
         const light = el.querySelector('a-light');
         const octa = el.querySelector('a-octahedron');
-        const label = document.querySelector('#crystal-text');
+        const text = document.querySelector('#crystal-label');
         const colors = [
-          { color: '#6366f1', name: 'Indigo Crystal' },
-          { color: '#ec4899', name: 'Neon Magenta' },
-          { color: '#06b6d4', name: 'Cyan Plasma' },
-          { color: '#10b981', name: 'Emerald Aura' },
-          { color: '#f59e0b', name: 'Solar Amber' }
+          { c: '#6366f1', name: 'Indigo Core' },
+          { c: '#ec4899', name: 'Neon Magenta' },
+          { c: '#06b6d4', name: 'Cyan Plasma' },
+          { c: '#10b981', name: 'Emerald Aura' },
+          { c: '#f59e0b', name: 'Solar Gold' }
         ];
-        let idx = 0;
+        let i = 0;
 
         el.addEventListener('click', () => {
-          idx = (idx + 1) % colors.length;
-          const target = colors[idx];
-
+          i = (i + 1) % colors.length;
+          const curr = colors[i];
           if (octa) {
-            octa.setAttribute('material', 'color', target.color);
-            octa.setAttribute('material', 'emissive', target.color);
+            octa.setAttribute('material', `color: ${curr.c}; emissive: ${curr.c}; emissiveIntensity: 0.8; roughness: 0.1; metalness: 0.9`);
           }
-          if (light) {
-            light.setAttribute('color', target.color);
-          }
-          if (label) {
-            label.setAttribute('value', target.name);
-          }
-
-          AudioEngine.playChime();
+          if (light) light.setAttribute('color', curr.c);
+          if (text) text.setAttribute('value', curr.name);
+          AudioSFX.chime();
         });
       }
     });
 
-    // Realm Portal Switcher
-    AFRAME.registerComponent('portal-interact', {
-      init: function () {
-        const el = this.el;
-        const realms = [
-          { preset: 'starry', name: 'Starry Sky', ground: 'grid', groundColor: '#0a0e1a' },
-          { preset: 'neon', name: 'Cyber Neon', ground: 'spikes', groundColor: '#1e1b4b' },
-          { preset: 'dream', name: 'Dream World', ground: 'hills', groundColor: '#3b0764' },
-          { preset: 'volcano', name: 'Ashen Crater', ground: 'canyon', groundColor: '#450a0a' }
-        ];
-        let idx = 0;
-
-        el.addEventListener('click', () => {
-          idx = (idx + 1) % realms.length;
-          const target = realms[idx];
-          const env = document.querySelector('#environment');
-
-          env.setAttribute('environment', `preset: ${target.preset}; ground: ${target.ground}; groundColor: ${target.groundColor}; shadow: true; skyType: atmosphere;`);
-          AudioEngine.playWobble();
-
-          const label = document.querySelector('#portal-text');
-          if (label) {
-            label.setAttribute('value', `Portal: ${target.name}`);
-          }
-        });
-      }
-    });
-
-    // Companion Robot Animation Switcher
-    AFRAME.registerComponent('robot-interact', {
+    // Robot Dance Toggle
+    AFRAME.registerComponent('robot-toggle', {
       init: function () {
         const el = this.el;
         const anims = ['Dance', 'Jump', 'Walk', 'Idle'];
-        let idx = 0;
-
+        let i = 0;
         el.addEventListener('click', () => {
-          idx = (idx + 1) % anims.length;
-          const nextAnim = anims[idx];
-
-          el.setAttribute('animation-mixer', `clip: ${nextAnim}; loop: repeat;`);
-          AudioEngine.playTone(660, 'square', 0.25);
-
-          const label = document.querySelector('#robot-text');
-          if (label) {
-            label.setAttribute('value', `Robot: ${nextAnim}`);
-          }
+          i = (i + 1) % anims.length;
+          const anim = anims[i];
+          el.setAttribute('animation-mixer', `clip: ${anim}; loop: repeat;`);
+          AudioSFX.play(660, 'square', 0.2);
+          const label = document.querySelector('#robot-label');
+          if (label) label.setAttribute('value', `Robot: ${anim}`);
         });
       }
     });
@@ -235,63 +169,66 @@
 </head>
 <body>
 
-  <!-- 2D HUD UI Overlay -->
-  <div id="ui-hud">
-    <div class="ui-title">✨ Aetheria VR World</div>
-    <div class="ui-info">
-      A high-fidelity 3D sanctuary designed for <strong>Meta Quest 3 / 3s</strong> & WebVR exploration.
-      <br><br>
-      • <strong>WASD</strong>: Walk around<br>
+  <!-- UI Card -->
+  <div id="hud">
+    <div class="hud-title">✨ Aetheria VR Showcase</div>
+    <div class="hud-text">
+      Interactive 3D & VR World for <strong>Meta Quest 3 / 3s</strong>.<br>
+      • <strong>WASD</strong>: Move around<br>
       • <strong>Mouse Drag</strong>: Look around<br>
-      • <strong>Click</strong>: Interact with 3D objects<br>
-      • <strong>VR Button</strong>: Enter VR on Quest 3
+      • <strong>Click</strong>: Interact with objects
     </div>
-    <span class="ui-badge">A-Frame 1.7.1 • WebXR Ready</span>
+    <span class="hud-badge">A-Frame 1.7.1 • WebXR Ready</span>
   </div>
 
   <!-- A-Frame VR Scene -->
   <a-scene 
-    renderer="antialias: true; colorManagement: true; exposure: 1.1;"
+    renderer="antialias: true; colorManagement: true; exposure: 1.2;"
     cursor="rayOrigin: mouse"
     raycaster="objects: .clickable">
 
-    <!-- Assets -->
+    <!-- Preloaded GLTF Assets -->
     <a-assets>
-      <a-asset-item id="robot-model" src="https://modelviewer.dev/shared-assets/models/robot.glb"></a-asset-item>
-      <a-asset-item id="helmet-model" src="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DamagedHelmet/glTF-Binary/DamagedHelmet.glb"></a-asset-item>
-      <a-asset-item id="astronaut-model" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"></a-asset-item>
+      <a-asset-item id="robot-gltf" src="https://modelviewer.dev/shared-assets/models/robot.glb"></a-asset-item>
+      <a-asset-item id="helmet-gltf" src="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DamagedHelmet/glTF-Binary/DamagedHelmet.glb"></a-asset-item>
+      <a-asset-item id="astro-gltf" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"></a-asset-item>
+      <img id="grid-texture" src="https://cdn.aframe.io/a-painter/images/floor.jpg" crossorigin="anonymous">
+      <img id="sky-texture" src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/city.jpg" crossorigin="anonymous">
     </a-assets>
 
-    <!-- Procedural Environment (Clean, Dark Grid Ground & Cosmic Sky) -->
-    <a-entity 
-      id="environment" 
-      environment="preset: starry; ground: grid; groundColor: #0a0e1a; groundTexture: grid; shadow: true; skyType: atmosphere; lightPosition: -1 2 1;">
-    </a-entity>
+    <!-- Sky Sphere (360 Panorama) -->
+    <a-sky src="#sky-texture" rotation="0 -90 0"></a-sky>
 
-    <!-- Lighting -->
-    <a-light type="ambient" color="#38bdf8" intensity="0.5"></a-light>
-    <a-light type="directional" color="#f472b6" intensity="0.8" position="-5 10 5" cast-shadow="true"></a-light>
+    <!-- Ground Plane (Dark Metallic Grid) -->
+    <a-plane 
+      position="0 0 0" 
+      rotation="-90 0 0" 
+      width="60" 
+      height="60" 
+      src="#grid-texture" 
+      repeat="15 15" 
+      material="roughness: 0.4; metalness: 0.6">
+    </a-plane>
 
-    <!-- Camera Rig & VR Controllers -->
-    <a-entity id="rig" movement-controls="speed: 0.18; fly: false;" position="0 0 3">
-      <a-entity 
-        id="camera" 
-        camera 
-        position="0 1.6 0" 
-        look-controls="pointerLockEnabled: false">
-        <!-- Desktop Cursor -->
+    <!-- Environment Ambient & Directional Lights -->
+    <a-light type="ambient" color="#64748b" intensity="0.6"></a-light>
+    <a-light type="directional" color="#f472b6" intensity="1.0" position="-4 10 4" cast-shadow="true"></a-light>
+    <a-light type="point" color="#6366f1" intensity="2" position="0 4 -4" distance="15"></a-light>
+
+    <!-- Camera Rig & Controllers -->
+    <a-entity id="rig" movement-controls="speed: 0.18; fly: false;" position="0 0 3.5">
+      <a-entity id="camera" camera position="0 1.6 0" look-controls="pointerLockEnabled: false">
         <a-cursor
           id="cursor"
           color="#6366f1"
           fuse="false"
           raycaster="objects: .clickable; far: 30"
-          animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.1 0.1 0.1; to: 1 1 1">
+          animation__click="property: scale; startEvents: click; dur: 150; from: 0.1 0.1 0.1; to: 1 1 1">
         </a-cursor>
       </a-entity>
 
-      <!-- Meta Quest 3 Left Touch Controller -->
-      <a-entity
-        id="leftController"
+      <!-- Quest 3 Left Controller -->
+      <a-entity id="leftController"
         meta-touch-controls="hand: left"
         oculus-touch-controls="hand: left"
         laser-controls="hand: left"
@@ -299,9 +236,8 @@
         line="color: #06b6d4; opacity: 0.9">
       </a-entity>
 
-      <!-- Meta Quest 3 Right Touch Controller -->
-      <a-entity
-        id="rightController"
+      <!-- Quest 3 Right Controller -->
+      <a-entity id="rightController"
         meta-touch-controls="hand: right"
         oculus-touch-controls="hand: right"
         laser-controls="hand: right"
@@ -311,107 +247,90 @@
     </a-entity>
 
 
-    <!-- ================= WORLD EXHIBITS (GROUND LEVEL) ================= -->
+    <!-- ================= EXHIBITION OBJECTS ================= -->
 
-    <!-- 1. Central Hologram Platform (Interactive Energy Crystal) -->
-    <a-entity position="0 1.2 -5" crystal-interact class="clickable" hover-effect>
-      <!-- Levitating Crystal -->
+    <!-- 1. Center Exhibit: Floating Energy Crystal Core -->
+    <a-entity position="0 1.2 -4" crystal-toggle class="clickable" hover-grow>
+      <!-- Crystal Octahedron -->
       <a-octahedron 
-        radius="0.9" 
-        material="color: #6366f1; emissive: #6366f1; emissiveIntensity: 0.7; roughness: 0.1; metalness: 0.9"
+        radius="0.8" 
+        material="color: #6366f1; emissive: #6366f1; emissiveIntensity: 0.75; roughness: 0.1; metalness: 0.9"
         animation="property: rotation; to: 0 360 360; loop: true; dur: 10000; easing: linear"
-        animation__bob="property: position; dir: alternate; to: 0 1.5 -5; loop: true; dur: 2000; easing: easeInOutSine">
+        animation__bob="property: position; dir: alternate; to: 0 1.5 -4; loop: true; dur: 2000; easing: easeInOutSine">
       </a-octahedron>
 
       <!-- Inner Pulsing Core -->
       <a-sphere 
-        radius="0.35" 
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 1; opacity: 0.9"
-        animation="property: scale; dir: alternate; to: 1.2 1.2 1.2; loop: true; dur: 800">
+        radius="0.3" 
+        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 1"
+        animation="property: scale; dir: alternate; to: 1.25 1.25 1.25; loop: true; dur: 800">
       </a-sphere>
 
-      <!-- Dynamic Light -->
-      <a-light type="point" color="#6366f1" intensity="2" distance="10"></a-light>
+      <!-- Point light emitted by crystal -->
+      <a-light type="point" color="#6366f1" intensity="2" distance="8"></a-light>
 
-      <!-- Sleek Cylindrical Base Platform -->
-      <a-cylinder position="0 -0.8 0" radius="1.2" height="0.4" material="color: #0f172a; roughness: 0.3; metalness: 0.8"></a-cylinder>
-      <a-ring position="0 -0.59 0" rotation="-90 0 0" radius-inner="0.8" radius-outer="1.2" material="color: #6366f1; emissive: #6366f1; emissiveIntensity: 0.8"></a-ring>
+      <!-- Base Pedestal -->
+      <a-cylinder position="0 -0.8 0" radius="1.2" height="0.4" material="color: #1e1b4b; roughness: 0.3; metalness: 0.8"></a-cylinder>
+      <a-ring position="0 -0.59 0" rotation="-90 0 0" radius-inner="0.7" radius-outer="1.2" material="color: #6366f1; emissive: #6366f1; emissiveIntensity: 0.8"></a-ring>
 
-      <!-- 3D Text Label -->
-      <a-text id="crystal-text" value="Indigo Crystal" position="0 -1.2 0" align="center" color="#818cf8" width="4" font="kelsonsans"></a-text>
-      <a-text value="(Click to change color)" position="0 -1.5 0" align="center" color="#94a3b8" width="2.8"></a-text>
+      <!-- Labels -->
+      <a-text id="crystal-label" value="Indigo Core" position="0 -1.2 0" align="center" color="#818cf8" width="4" font="kelsonsans"></a-text>
+      <a-text value="(Click to change color)" position="0 -1.5 0" align="center" color="#cbd5e1" width="2.6"></a-text>
     </a-entity>
 
 
-    <!-- 2. Realm Portal Gateway (Left Side) -->
-    <a-entity position="-4 1.4 -4" rotation="0 30 0" portal-interact class="clickable" hover-effect>
-      <!-- Outer Torus Ring -->
-      <a-torus 
-        radius="1.2" 
-        radius-tubular="0.08" 
-        material="color: #06b6d4; emissive: #06b6d4; emissiveIntensity: 0.9"
-        animation="property: rotation; to: 0 0 360; loop: true; dur: 12000; easing: linear">
-      </a-torus>
-
-      <!-- Inner Swirling Portal Void -->
-      <a-circle 
-        radius="1.1" 
-        material="color: #3b82f6; opacity: 0.8; transparent: true; side: double"
-        animation="property: rotation; to: 0 0 -360; loop: true; dur: 6000; easing: linear">
-      </a-circle>
-
-      <a-light type="point" color="#06b6d4" intensity="1.5" distance="8"></a-light>
-      <a-cylinder position="0 -1.2 0" radius="1" height="0.3" material="color: #0f172a; roughness: 0.3; metalness: 0.8"></a-cylinder>
-
-      <!-- Label -->
-      <a-text id="portal-text" value="Portal: Starry Sky" position="0 1.6 0" align="center" color="#38bdf8" width="4" font="kelsonsans"></a-text>
-      <a-text value="(Click to switch realm)" position="0 1.3 0" align="center" color="#94a3b8" width="2.8"></a-text>
-    </a-entity>
-
-
-    <!-- 3. Sci-Fi Companion Robot (Right Side) -->
+    <!-- 2. Right Exhibit: Animated Companion Robot -->
     <a-entity 
-      position="4 0 -4" 
-      rotation="0 -30 0" 
+      position="3.2 0 -3.5" 
+      rotation="0 -35 0" 
       scale="0.75 0.75 0.75"
-      gltf-model="#robot-model"
+      gltf-model="#robot-gltf"
       animation-mixer="clip: Dance; loop: repeat;"
-      robot-interact
+      robot-toggle
       class="clickable"
-      hover-effect>
+      hover-grow>
       
-      <!-- Platform Base -->
-      <a-cylinder position="0 0 0" radius="1.2" height="0.1" material="color: #ec4899; emissive: #ec4899; emissiveIntensity: 0.6"></a-cylinder>
+      <!-- Holographic Base -->
+      <a-cylinder position="0 0 0" radius="1.2" height="0.08" material="color: #ec4899; emissive: #ec4899; emissiveIntensity: 0.6"></a-cylinder>
       <a-light type="point" position="0 1.5 0" color="#ec4899" intensity="1.5" distance="6"></a-light>
 
       <!-- Label -->
-      <a-text id="robot-text" value="Robot: Dance" position="0 2.5 0" align="center" color="#f472b6" width="4.5" font="kelsonsans"></a-text>
-      <a-text value="(Click to change move)" position="0 2.1 0" align="center" color="#94a3b8" width="3"></a-text>
+      <a-text id="robot-label" value="Robot: Dance" position="0 2.5 0" align="center" color="#f472b6" width="4.5" font="kelsonsans"></a-text>
+      <a-text value="(Click to change animation)" position="0 2.1 0" align="center" color="#cbd5e1" width="3"></a-text>
     </a-entity>
 
 
-    <!-- 4. Ancient Relic Helmet Display (Far Right) -->
-    <a-entity position="6 1.2 -1" rotation="0 -70 0" class="clickable" hover-effect>
+    <!-- 3. Left Exhibit: Sci-Fi Damaged Helmet Relic -->
+    <a-entity position="-3.2 1.2 -3.5" rotation="0 35 0" class="clickable" hover-grow>
       <a-gltf-model 
-        src="#helmet-model" 
+        src="#helmet-gltf" 
         scale="1.1 1.1 1.1"
         animation="property: rotation; to: 0 360 0; loop: true; dur: 16000; easing: linear">
       </a-gltf-model>
 
-      <a-cylinder position="0 -0.7 0" radius="0.6" height="0.1" material="color: #06b6d4; emissive: #06b6d4; emissiveIntensity: 0.6"></a-cylinder>
+      <a-cylinder position="0 -0.7 0" radius="0.7" height="0.4" material="color: #0f172a; roughness: 0.3; metalness: 0.8"></a-cylinder>
+      <a-ring position="0 -0.49 0" rotation="-90 0 0" radius-inner="0.4" radius-outer="0.7" material="color: #06b6d4; emissive: #06b6d4; emissiveIntensity: 0.8"></a-ring>
+
       <a-text value="Ancient Relic" position="0 1.1 0" align="center" color="#22d3ee" width="3.5" font="kelsonsans"></a-text>
     </a-entity>
 
 
-    <!-- 5. Explorer Vanguard Astronaut (Far Left) -->
-    <a-entity position="-6 0 -1" rotation="0 70 0" class="clickable" hover-effect>
+    <!-- 4. Far Left Exhibit: Floating Astronaut Explorer -->
+    <a-entity position="-5.5 0 -1" rotation="0 70 0" class="clickable" hover-grow>
       <a-gltf-model 
-        src="#astronaut-model" 
+        src="#astro-gltf" 
         scale="0.85 0.85 0.85"
-        animation__bob="property: position; dir: alternate; to: -6 0.25 -1; loop: true; dur: 2500; easing: easeInOutQuad">
+        animation__bob="property: position; dir: alternate; to: -5.5 0.25 -1; loop: true; dur: 2500; easing: easeInOutQuad">
       </a-gltf-model>
 
       <a-text value="Explorer Vanguard" position="0 2.4 0" align="center" color="#a855f7" width="3.5" font="kelsonsans"></a-text>
+    </a-entity>
+
+
+    <!-- 5. Background Orbiting Energy Rings -->
+    <a-entity position="0 5 -12">
+      <a-torus radius="6" radius-tubular="0.04" material="color: #818cf8; emissive: #818cf8; emissiveIntensity: 0.5" animation="property: rotation; to: 360 180 0; loop: true; dur: 20000; easing: linear"></a-torus>
+      <a-torus radius="8" radius-tubular="0.03" material="color: #ec4899; emissive: #ec4899; emissiveIntensity: 0.4" animation="property: rotation; to: -360 360 180; loop: true; dur: 26000; easing: linear"></a-torus>
     </a-entity>
 
   </a-scene>
